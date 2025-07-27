@@ -1,11 +1,11 @@
 submodule(fmm) math
     contains
 
-    pure real(kind) module function  get_sph_coeff(this, n, m) result(val)
+    real(kind) module function  get_sph_coeff(this, n, m) result(val)
         class(sph_harm_coeff), intent(in) :: this
         integer, intent(in) :: n, m
         integer :: start, shift
-        start = get_m_ptr(this, n)
+        start = get_m_ptr(n)
         !order -m, -(m-1), ... m-1, m
         shift = n + m !!= 0 if n = -m, 
         val = this%data(shift+start)
@@ -15,7 +15,7 @@ submodule(fmm) math
         integer, intent(in) :: n, m
         real(kind), intent(in) ::val
         integer :: start, shift
-        start = get_m_ptr(this,n)
+        start = get_m_ptr(n)
         !order -m, -(m-1), ... m-1, m
         shift = n + m !!= 0 if n = -m, 
         this%data(shift+start) = val
@@ -26,7 +26,7 @@ submodule(fmm) math
         integer, intent(in) :: n, m
         real(kind), intent(in) ::val
         integer :: start, shift
-        start = get_m_ptr(this,n)
+        start = get_m_ptr(n)
         !order -m, -(m-1), ... m-1, m
         shift = n + m !!= 0 if n = -m, 
         this%data(shift+start) = this%data(shift+start) + val
@@ -37,16 +37,23 @@ submodule(fmm) math
         integer, intent(in) :: n, m
         real(kind), intent(in) ::val
         integer :: start, shift
-        start = get_m_ptr(this,n)
+        start = get_m_ptr(n)
         !order -m, -(m-1), ... m-1, m
         shift = n + m !!= 0 if n = -m, 
         this%data(shift+start) = this%data(shift+start) * val
     end subroutine
 
-    pure integer elemental function get_m_ptr(this, n)
-        type(sph_harm_coeff), intent(in) :: this
+    integer function get_m_ptr(n)
         integer, intent(in) :: n
-        get_m_ptr = n*n + 1
+        integer, dimension(0:p), save :: ptr
+        integer :: i
+        logical, save :: first_time = .true.
+        if(first_time) then
+            do i = 0,p
+                ptr(i) = i*i+1
+            end do
+        endif
+        get_m_ptr = ptr(n)
         ! n = 0 => 0. n = 1 => 1.    n = 2 => 4 (+ 5 = 9) (+7 = 16) (+9 = 25)
     end function
     module subroutine alloc_sph_coeff(this,n)
@@ -134,10 +141,11 @@ submodule(fmm) math
 
         x = cos(gamma)
         y = sin(gamma) !! == sqrt(1-x^2)
+        !https://en.wikipedia.org/wiki/Associated_Legendre_polynomials#Recurrence_formula 
         do n = 1, p
-            val = (-2*n+1) * y * Pnm%get(n-1,n-1) !recurrence to get top of chain.
+            val = -(2*n-1) * y * Pnm%get(n-1,n-1) !recurrence to get top of chain.
             call Pnm%set(n,n, val)
-            val = x*(2*l+1)*Pnm%get(n-1,n-1) !recurrence to get one lower.
+            val = x*(2*n-1)*Pnm%get(n-1,n-1) !recurrence to get one lower.
             call Pnm%set(n-1,n, val)
             !top two m values are set. use recurrence to find the others
             do m = n-1, -(n-1), -1

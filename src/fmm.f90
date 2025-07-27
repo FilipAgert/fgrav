@@ -22,7 +22,7 @@ module fmm
 
      
     interface
-        module pure real(kind) function get_sph_coeff(this, n, m)
+        module real(kind) function get_sph_coeff(this, n, m)
             class(sph_harm_coeff), intent(in) :: this
             integer, intent(in) :: n, m
         end function
