@@ -15,11 +15,10 @@ program main
  
     type(body), dimension(4) :: bodies
     real(kind) :: COM(3)
-    real(kind) :: pi, E0, T, V,alpha, scale, positions(size(bodies),3), lasttime, tp
+    real(kind) :: E0, T, V,alpha, scale, positions(size(bodies),3), lasttime, tp
     integer :: ii
 
     
-    pi = acos(-1.0)
     call bodies(2)%initialize("Moon", 0.012*3e-6_kind, 0.0_kind)
     call bodies(1)%initialize("Earth", 3.003e-6_kind, 0.0_kind)
     call bodies(3)%initialize("Asteroid", 0.0_kind, 0.0_kind, .true.)
