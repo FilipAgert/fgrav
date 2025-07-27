@@ -7,4 +7,5 @@ module constants
     real(kind),parameter :: M_moon = 3.69e-8 ! solar masses 
     real(kind),parameter :: M_Jup = 9.55e-3 !10 jupiter 
     real(kind), parameter :: AU =1.496e8
+    real(kind), parameter :: pi = acos(-1.0_kind)
 end module
