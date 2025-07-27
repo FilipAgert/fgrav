@@ -91,11 +91,12 @@ submodule(fmm) math
     real(kind) function fac(n)
         integer, intent(in) :: n
         logical, save :: first_time = .true.
-        real(kind), save :: f(0:167)
+        integer, parameter :: maxf = 170
+        real(kind), save :: f(0:maxf)
         integer ::i
         if(first_time) then
             f(0)= 1
-            do i =0,166
+            do i =0,max-1
                 f(i+1) = f(i) * (i+1)
             end do
             first_time = .false.
@@ -106,12 +107,13 @@ submodule(fmm) math
     real(kind) function ffac(n)!!double factorial
         integer, intent(in) :: n
         logical, save :: first_time = .true.
-        real(kind), save :: f(0:167)
+        integer, parameter :: max = 301
+        real(kind), save :: f(0:max)
         integer ::i
         if(first_time) then
             f(0)= 1
             f(1)=1
-            do i =1,166
+            do i =1,max-1
                 f(i+1) = f(i-1) * (i+1)
             end do
             first_time = .false.
