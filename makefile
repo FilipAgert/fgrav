@@ -12,7 +12,7 @@ CC = gfortran $(FLAGS) -J$(DMOD) $(LIBS) -c
 CCL = gfortran -o
 
 # Objects
-OBJECTS = $(DOBJ)/constants.o $(DOBJ)/body_module.o $(DOBJ)/sim.o $(DOBJ)/out.o $(DOBJ)/fmm.o $(DOBJ)/fmm_cheb.o
+OBJECTS = $(DOBJ)/constants.o $(DOBJ)/body_module.o $(DOBJ)/sim.o $(DOBJ)/out.o $(DOBJ)/fmm.o $(DOBJ)/fmm_math.o
 
 MAIN_OBJ = $(DOBJ)/main.o
 
@@ -22,8 +22,8 @@ $(DOBJ)/sim.o: $(DSRC)/sim.f90 $(DOBJ)/constants.o $(DOBJ)/body_module.o
 $(DOBJ)/body_module.o: $(DSRC)/body_module.f90 $(DOBJ)/constants.o
 $(DOBJ)/constants.o: $(DSRC)/constants.f90
 $(DOBJ)/out.o: $(DSRC)/out.f90 $(DOBJ)/constants.o $(DOBJ)/body_module.o
-$(DOBJ)/cheb.o: $(DSRC)/cheb.f90 $(DOBJ)/constants.o $(DOBJ)/fmm_cheb.o
-$(DOBJ)/fmm_cheb.o: $(DSRC)/fmm_cheb.f90 $(DOBJ)/constants.o
+$(DOBJ)/cheb.o: $(DSRC)/cheb.f90 $(DOBJ)/constants.o $(DOBJ)/fmm_math.o
+$(DOBJ)/fmm_math.o: $(DSRC)/fmm_math.f90 $(DOBJ)/constants.o
 # Default target
 
 

@@ -1,0 +1,150 @@
+submodule(fmm) math
+    contains
+
+    pure real(kind) module function  get_sph_coeff(this, n, m) result(val)
+        class(sph_harm_coeff), intent(in) :: this
+        integer, intent(in) :: n, m
+        integer :: start, shift
+        start = get_m_ptr(this, n)
+        !order -m, -(m-1), ... m-1, m
+        shift = n + m !!= 0 if n = -m, 
+        val = this%data(shift+start)
+    end function
+    module subroutine set_sph_coeff(this, n, m, val)
+        class(sph_harm_coeff), intent(inout) :: this
+        integer, intent(in) :: n, m
+        real(kind), intent(in) ::val
+        integer :: start, shift
+        start = get_m_ptr(this,n)
+        !order -m, -(m-1), ... m-1, m
+        shift = n + m !!= 0 if n = -m, 
+        this%data(shift+start) = val
+    end subroutine
+
+    module subroutine add_sph_coeff(this, n, m, val)
+        class(sph_harm_coeff), intent(inout) :: this
+        integer, intent(in) :: n, m
+        real(kind), intent(in) ::val
+        integer :: start, shift
+        start = get_m_ptr(this,n)
+        !order -m, -(m-1), ... m-1, m
+        shift = n + m !!= 0 if n = -m, 
+        this%data(shift+start) = this%data(shift+start) + val
+    end subroutine
+
+    module subroutine mul_sph_coeff(this, n, m, val)
+        class(sph_harm_coeff), intent(inout) :: this
+        integer, intent(in) :: n, m
+        real(kind), intent(in) ::val
+        integer :: start, shift
+        start = get_m_ptr(this,n)
+        !order -m, -(m-1), ... m-1, m
+        shift = n + m !!= 0 if n = -m, 
+        this%data(shift+start) = this%data(shift+start) * val
+    end subroutine
+
+    pure integer elemental function get_m_ptr(this, n)
+        type(sph_harm_coeff), intent(in) :: this
+        integer, intent(in) :: n
+        get_m_ptr = n*n + 1
+        ! n = 0 => 0. n = 1 => 1.    n = 2 => 4 (+ 5 = 9) (+7 = 16) (+9 = 25)
+    end function
+    module subroutine alloc_sph_coeff(this,n)
+        class(sph_harm_coeff), intent(inout) :: this
+        integer, intent(in) :: n
+        integer:: numdata
+        numdata = (n+1)**2
+        if(.not. allocated(this%data))allocate(this%data(numdata))
+
+        ! Each level (2n+1). Sum k=0 N (2k+1)
+    end subroutine
+
+    module subroutine Ynm(f,theta, phi)  !!Gets spherical harmonics from n=0..p evaluated at theta,phi
+        real(kind), intent(in) :: theta,phi
+        type(sph_harm_coeff), save :: Nnm !!normalization constant
+        type(sph_harm_coeff), intent(out) :: f
+        type(sph_harm_coeff) :: Pnm
+        logical, save :: first_time = .true.
+        integer :: nn, mm
+        real(kind) :: norm, val
+        if(first_time) then
+            call Nnm%alloc(p)
+            do nn = 0,p
+                do mm = -nn, nn
+                    norm = sqrt((2.0_kind*nn+1.0_kind) * fac(nn-mm)) / sqrt(4.0_kind*pi * fac(nn+mm))
+                    call Nnm%set(nn,mm,norm)
+                end do
+            end do
+            first_time = .false.
+        endif
+        call Pnm%alloc(p)
+        call f%alloc(p)
+        call compute_legendre_cos_gamma(theta, Pnm)
+        do nn = 0,p
+            do mm = -nn,nn
+                val = 1
+                if(mm < 0) then
+                    val =sin(-m*phi)
+                else if (mm > 0) then
+                    val = cos(m*phi)
+                endif
+                call f%set(nn,mm, Nnm%get(nn,mm) * Pnm%get(nn,mm) * val)
+            end do
+        end do
+    end subroutine
+
+    real(kind) function fac(n)
+        integer, intent(in) :: n
+        logical, save :: first_time = .true.
+        real(kind), save :: f(0:167)
+        integer ::i
+        if(first_time) then
+            f(0)= 1
+            do i =0,166
+                f(i+1) = f(i) * (i+1)
+            end do
+            first_time = .false.
+        endif
+        fac = f(n)
+    end function
+
+    real(kind) function ffac(n)!!double factorial
+        integer, intent(in) :: n
+        logical, save :: first_time = .true.
+        real(kind), save :: f(0:167)
+        integer ::i
+        if(first_time) then
+            f(0)= 1
+            f(1)=1
+            do i =1,166
+                f(i+1) = f(i-1) * (i+1)
+            end do
+            first_time = .false.
+        endif
+        ffac = f(n)
+    end function
+
+    subroutine compute_legendre_cos_gamma(gamma, Pnm)
+        real(kind), intent(in) :: gamma
+        real(kind) :: x, val, y
+        type(sph_harm_coeff), intent(inout) :: Pnm
+        integer :: n,m
+        call Pnm%alloc(p)
+        call Pnm%set(0,0,1.0_kind)
+
+        x = cos(gamma)
+        y = sin(gamma) !! == sqrt(1-x^2)
+        do n = 1, p
+            val = (-2*n+1) * y * Pnm%get(n-1,n-1) !recurrence to get top of chain.
+            call Pnm%set(n,n, val)
+            val = x*(2*l+1)*Pnm%get(n-1,n-1) !recurrence to get one lower.
+            call Pnm%set(n-1,n, val)
+            !top two m values are set. use recurrence to find the others
+            do m = n-1, -(n-1), -1
+                val = (2*m*x*Pnm%get(n,m)/y - Pnm%get(n,m+1))/((l+m)*(l-m+1))
+                call Pnm%set(n,m-1,val)
+            end do
+        end do
+    end subroutine
+
+end submodule 
