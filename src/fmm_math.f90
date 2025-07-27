@@ -56,26 +56,16 @@ submodule(fmm) math
         get_m_ptr = ptr(n)
         ! n = 0 => 0. n = 1 => 1.    n = 2 => 4 (+ 5 = 9) (+7 = 16) (+9 = 25)
     end function
-    module subroutine alloc_sph_coeff(this,n)
-        class(sph_harm_coeff), intent(inout) :: this
-        integer, intent(in) :: n
-        integer:: numdata
-        numdata = (n+1)**2
-        if(.not. allocated(this%data))allocate(this%data(numdata))
 
-        ! Each level (2n+1). Sum k=0 N (2k+1)
-    end subroutine
-
-    module subroutine Ynm(f,theta, phi)  !!Gets spherical harmonics from n=0..p evaluated at theta,phi
+    module subroutine Ynm(Y,theta, phi)  !!Gets spherical harmonics from n=0..p evaluated at theta,phi
         real(kind), intent(in) :: theta,phi
         type(sph_harm_coeff), save :: Nnm !!normalization constant
-        type(sph_harm_coeff), intent(out) :: f
+        type(sph_harm_coeff), intent(out) :: Y
         type(sph_harm_coeff) :: Pnm
         logical, save :: first_time = .true.
         integer :: nn, mm
         real(kind) :: norm, val
         if(first_time) then
-            call Nnm%alloc(p)
             do nn = 0,p
                 do mm = -nn, nn
                     norm = sqrt((2.0_kind*nn+1.0_kind) * fac(nn-mm)) / sqrt(4.0_kind*pi * fac(nn+mm))
@@ -84,18 +74,16 @@ submodule(fmm) math
             end do
             first_time = .false.
         endif
-        call Pnm%alloc(p)
-        call f%alloc(p)
         call compute_legendre_cos_gamma(theta, Pnm)
         do nn = 0,p
             do mm = -nn,nn
                 val = 1
                 if(mm < 0) then
-                    val =sin(-m*phi)
+                    val =sin(-mm*phi)
                 else if (mm > 0) then
-                    val = cos(m*phi)
+                    val = cos(mm*phi)
                 endif
-                call f%set(nn,mm, Nnm%get(nn,mm) * Pnm%get(nn,mm) * val)
+                call Y%set(nn,mm, Nnm%get(nn,mm) * Pnm%get(nn,mm) * val)
             end do
         end do
     end subroutine
@@ -136,7 +124,6 @@ submodule(fmm) math
         real(kind) :: x, val, y
         type(sph_harm_coeff), intent(inout) :: Pnm
         integer :: n,m
-        call Pnm%alloc(p)
         call Pnm%set(0,0,1.0_kind)
 
         x = cos(gamma)
@@ -149,7 +136,7 @@ submodule(fmm) math
             call Pnm%set(n-1,n, val)
             !top two m values are set. use recurrence to find the others
             do m = n-1, -(n-1), -1
-                val = (2.0_kind*m*x*Pnm%get(n,m)/y - Pnm%get(n,m+1))/((l+m)*(l-m+1.0_kind))
+                val = (2.0_kind*m*x*Pnm%get(n,m)/y - Pnm%get(n,m+1))/((n+m)*(n-m+1.0_kind))
                 call Pnm%set(n,m-1,val)
             end do
         end do

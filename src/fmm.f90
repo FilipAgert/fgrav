@@ -5,9 +5,8 @@ module fmm
     integer, parameter :: p = 5 !!order of interpolation
     type sph_harm_coeff !!Data structure for storing spherical harmonic coefficients c_n^m
     !since each n stores (2n+1) coefficients, a 2d array is inefficient. 1d array is better.
-        real(kind), private, allocatable :: data(:)
+        real(kind), private :: data((p+1)**2)
         contains
-            procedure :: alloc => alloc_sph_coeff
             procedure :: get => get_sph_coeff
             procedure :: set => set_sph_coeff
             procedure :: add => add_sph_coeff
@@ -52,8 +51,8 @@ module fmm
             integer, intent(in) :: n
         end subroutine
 
-        module subroutine Ynm(f,theta, phi)
-            type(sph_harm_coeff), intent(out) ::f !!Contains factor part of function fnm = Nnm * Pnm(cos theta)
+        module subroutine Ynm(Y,theta, phi)
+            type(sph_harm_coeff), intent(out) ::Y !!Contains factor part of function fnm = Nnm * Pnm(cos theta)
             real(kind), intent(in) :: theta,phi
         end subroutine
 
@@ -66,8 +65,7 @@ module fmm
             type(cluster), intent(inout) :: clust
             integer :: n, m, i
             real(kind) :: s, rho, alpha, beta, rhoraised, w
-            type(sph_harm_coeff) :: f
-            real(kind) ::phase(-p:p)
+            type(sph_harm_coeff) :: Y
             clust%mp_exp%data=0
 
             do i = 1, size(clust%weights,1)
@@ -75,15 +73,14 @@ module fmm
                 alpha = clust%pos(2,i)
                 beta = clust%pos(3,i)
                 w = clust%weights(i)
-                call Ynm(f, alpha, beta)
+                call Ynm(Y, alpha, beta)
                 do n = 0,p
                     rhoraised = rho**n
                     do m = -p,p
-                        s = f%get(n,m)
+                        s = Y%get(n,m)
                         call clust%mp_exp%add(n, m, s*rhoraised*w)
                     end do
                 end do
-
             end do
         end subroutine
 
