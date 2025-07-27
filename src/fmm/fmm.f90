@@ -2,6 +2,7 @@ module fmm
     use constants
     implicit none
     private
+    public :: cluster, calc_mulp_exp_c
     integer, parameter :: p = 5 !!order of interpolation
     type sph_harm_coeff !!Data structure for storing spherical harmonic coefficients c_n^m
     !since each n stores (2n+1) coefficients, a 2d array is inefficient. 1d array is better.
@@ -61,28 +62,28 @@ module fmm
 
     contains
 
-        subroutine calc_mulp_exp_c(clust)!!Calculates multipole expansion coefficients from a cluster.
-            type(cluster), intent(inout) :: clust
-            integer :: n, m, i
-            real(kind) :: s, rho, alpha, beta, rhoraised, w
-            type(sph_harm_coeff) :: Y
-            clust%mp_exp%data=0
+    subroutine calc_mulp_exp_c(clust)!!Calculates multipole expansion coefficients from a cluster.
+        type(cluster), intent(inout) :: clust
+        integer :: n, m, i
+        real(kind) :: s, rho, alpha, beta, rhoraised, w
+        type(sph_harm_coeff) :: Y
+        clust%mp_exp%data=0
 
-            do i = 1, size(clust%weights,1)
-                rho = clust%pos(1,i)
-                alpha = clust%pos(2,i)
-                beta = clust%pos(3,i)
-                w = clust%weights(i)
-                call Ynm(Y, alpha, beta)
-                do n = 0,p
-                    rhoraised = rho**n
-                    do m = -p,p
-                        s = Y%get(n,m)
-                        call clust%mp_exp%add(n, m, s*rhoraised*w)
-                    end do
+        do i = 1, size(clust%weights,1)
+            rho = clust%pos(1,i)
+            alpha = clust%pos(2,i)
+            beta = clust%pos(3,i)
+            w = clust%weights(i)
+            call Ynm(Y, alpha, beta)
+            do n = 0,p
+                rhoraised = rho**n
+                do m = -n,n
+                    s = Y%get(n,m)
+                    call clust%mp_exp%add(n, m, s*rhoraised*w)
                 end do
             end do
-        end subroutine
+        end do
+    end subroutine
 
 
 end module

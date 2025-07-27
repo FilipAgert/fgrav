@@ -6,7 +6,7 @@ submodule(fmm) math
         integer, intent(in) :: n, m
         integer :: start, shift
         start = get_m_ptr(n)
-        !order -m, -(m-1), ... m-1, m
+        !order -m, -(m-1), ... m-1, ms
         shift = n + m !!= 0 if n = -m, 
         val = this%data(shift+start)
     end function

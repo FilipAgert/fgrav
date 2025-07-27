@@ -26,7 +26,7 @@ program main
 
     bodies(2)%position = [0.002578,0.0,0.0]
     bodies(2)%velocity = [0.0, 5.88e-4, 0.0] ! circular orbit around Earth
-    bodies(3)%position = [0.0,0.004,0.0]; bodies(3)%velocity = [-1e-4, 0.0, 0.0] 
+    bodies(3)%position = [0.0,0.004,0.0]; bodies(3)%velocity = [-2.5e-4, 0.0, 0.0] 
     bodies(4)%position = [0.0,0.012,0.0]; bodies(4)%velocity = [5e-3, -5e-4, 0.0]
     
     ! Simulation setup
@@ -65,7 +65,7 @@ program main
             lasttime = dayctr
         end if
 
-        call adaptive_step(bodies, dt,1e-3_kind)
+        call adaptive_step(bodies, dt,1e-12_kind)
         dayctr = dayctr + dt
     end do
 
