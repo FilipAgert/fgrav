@@ -20,7 +20,6 @@ program main
 
     
     pi = acos(-1.0)
-    ! === Initialize Solar System ===
     call bodies(2)%initialize("Moon", 0.012*3e-6_kind, 0.0_kind)
     call bodies(1)%initialize("Earth", 3.003e-6_kind, 0.0_kind)
     call bodies(3)%initialize("Asteroid", 0.0_kind, 0.0_kind, .true.)
@@ -32,7 +31,7 @@ program main
     bodies(4)%position = [0.0,0.012,0.0]; bodies(4)%velocity = [5e-3, -5e-4, 0.0]
     
     ! Simulation setup
-    numdays = 365 * 15 ! simulate 5 years
+    numdays = 365 * 15 ! simulate 15 years
     numsteps = int(numdays / dt)
     dayctr = 0.0
     E0 = Vpot(bodies)+Tkin(bodies)
