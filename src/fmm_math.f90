@@ -149,7 +149,7 @@ submodule(fmm) math
             call Pnm%set(n-1,n, val)
             !top two m values are set. use recurrence to find the others
             do m = n-1, -(n-1), -1
-                val = (2*m*x*Pnm%get(n,m)/y - Pnm%get(n,m+1))/((l+m)*(l-m+1))
+                val = (2.0_kind*m*x*Pnm%get(n,m)/y - Pnm%get(n,m+1))/((l+m)*(l-m+1.0_kind))
                 call Pnm%set(n,m-1,val)
             end do
         end do
