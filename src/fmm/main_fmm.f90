@@ -9,14 +9,14 @@ program main
     complex(kind):: SUM
     type(sph_harm_coeff_c) :: Yt, Ys
     integer :: n,m
-    pos = [1.0_kind, 2.0_kind,0.0_kind]
+    pos = [1.0_kind, 2.0_kind,1.0_kind]
     weight = 1.0_kind
     allocate(cl%pos(3,1), cl%weights(1))
     cl%pos(:,1) = pos
     cl%weights = weight
     call calc_mulp_exp_c(cl)
 
-    r = [6.0_kind, 2.0_kind, 0.0_kind]
+    r = [50.0_kind, 2.0_kind, 1.0_kind]
     P1 = eval_mulp_exp_c(cl, r)
     P2 = 1.0_kind/abs(r(1)-pos(1))
     call Ynm(Ys, pos(2),pos(3))
@@ -31,6 +31,6 @@ program main
 
     
 
-    write(*,'(a,f10.3,a,f10.3)') "Exp method:", P1, ", actual:", P2
+    write(*,'(a,f10.6,a,f10.4)') "Exp method:", P1, ", actual:", P2
 
 end program

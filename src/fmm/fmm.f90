@@ -112,19 +112,20 @@ module fmm
         type(cluster), intent(in) :: clust
         real(kind), intent(in) :: r(3)
         type(sph_harm_coeff_c) :: Y
-        real(kind) ::Psi, invrpow
+        real(kind) ::Psi, rpow
         complex(kind) :: z
         integer :: n,m
         call Ynm(Y, r(2), r(3))
         Psi = 0
+        rpow = 1
         do n = 0,p
             z = 0
 
             do m = -n, n
                 z = z + Y%get(n,m)*clust%mp_exp%get(n,m)
             end do
-            invrpow = 1.0_kind/r(1)**(n+1)
-            Psi = Psi + REAL(z,kind)*invrpow
+            rpow = rpow*r(1)!r^n+1
+            Psi = Psi + REAL(z,kind)/rpow
         end do
     end function
 
