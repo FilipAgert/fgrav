@@ -18,13 +18,8 @@ module tree_module
         real(kind), intent(in) ::coords(:,:)
         real(kind) :: bounds(3,2)
         real(kind),intent(out) :: translation(3), scaling !!translation and scaling to put coordinates from world to [0,1]
-        bounds(1,1) = minval(coords(1,:),1)
-        bounds(1,2) = maxval(coords(1,:),1)
-        bounds(2,1) = minval(coords(2,:),1)
-        bounds(2,2) = maxval(coords(2,:),1)
-        bounds(3,1) = minval(coords(3,:),1)
-        bounds(3,2) = maxval(coords(3,:),1)
-
+        bounds(:,1) = minval(coords,2) !minvals for x,y,z
+        bounds(:,2) = maxval(coords,2) !maxvals for x,y,z
         scaling = 1.0_kind/maxval(bounds(:,2)-bounds(:,1),1)![bounds(3,2)-bounds(3,1), bounds(2,2)-bounds(2,1), bounds(1,2)-bounds(1,1)])
         !multiply world coordinates by scaling to convert world into [a,b] where b-a = 1
         translation = -bounds(:,1)*scaling

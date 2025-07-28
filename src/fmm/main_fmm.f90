@@ -36,7 +36,7 @@ program main
     call world_to_tree(shift, scale, ps)
 
     do n = 1,3
-        write(*,'(3f10.3)') ps(:,n)*scale + shift
+        write(*,'(3f10.3)') ps(:,n)*scale+shift
     end do
     bla(1,:) = [0,1]
     bla(2,:) = [0,1]
