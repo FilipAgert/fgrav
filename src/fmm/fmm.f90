@@ -3,7 +3,7 @@ module fmm
     implicit none
     private
     public :: cluster, calc_mulp_exp, eval_mulp_exp_c, Ynm, sph_harm_coeff_d, sph_harm_coeff_c, eval_grad_mulpexp
-    integer, parameter :: p = 6 !!order of interpolation
+    integer, parameter :: p = 16 !!order of interpolation
     type sph_harm_coeff_d !!Data structure for storing spherical harmonic coefficients c_n^m
     !since each n stores (2n+1) coefficients, a 2d array is inefficient. 1d array is better.
         real(kind), private :: data((p+1)**2)
@@ -84,11 +84,6 @@ module fmm
          real(kind) module function fac(n)
             integer, intent(in) :: n
         end function
-
-        module subroutine dYnmdt(dYdt,theta, phi)  !!Gets partial derivative of spherical harmonics from n=0..p evaluated at theta,phi
-            real(kind), intent(in) :: theta,phi
-            type(sph_harm_coeff_c), intent(out) :: dYdt
-        end subroutine
     end interface
 
 
@@ -175,14 +170,13 @@ module fmm
     !Evaluates the gradient of the potential given by coefficients g at point r.
    function eval_grad_mulpexp(cf, r) result(g)
         type(sph_harm_coeff_c),intent(in) :: cf
-        type(sph_harm_coeff_c) :: Y, dYdt
+        type(sph_harm_coeff_c) :: Y
         real(kind), intent(in) :: r(3) !!point in spherical coordinates
         real(kind) :: g(3) !!gradient in spherical coordinates
         real(kind) :: cott, isint, rpow
         complex(ckind) :: zr, zt, zp, phase
         integer :: m,n
         call Ynm(Y, r(2), r(3))
-        call dYnmdt(dYdt, r(2), r(3))!! dYnm dtheta
         cott = cotan(r(2))
         isint = 1.0_kind/sin(r(2))
         rpow = r(1)
@@ -197,7 +191,9 @@ module fmm
             do m = -n, n
                 zr = zr + cf%get(n,m)* Y%get(n,m)
                 zp = zp + cf%get(n,m)*complex(0.0_kind, 1.0_kind) * m * isint *  Y%get(n,m)
-                zt = zt + cf%get(n,m)*dYdt%get(n,m)!(m*cott*Y%get(n,m) + sqrt((n-m)*(n+m+1)*1.0_kind)*phase * Y%get(n,m+1))
+                !zt = zt + cf%get(n,m)*dYdt%get(n,m)
+                ! dYnm/dtheta = n cotan(theta) Ynm - 1/(sin theta) * Y_(n-1)m * sqrt(n+|m|)*sqrt(n-|m|)
+                zt = zt + cf%get(n,m) * (n*cott * Y%get(n,m) - isint*Y%get(n-1,m)*sqrt(1.0_kind*(n*n-m*m)))
             end do
             rpow = rpow*r(1)!r^n+2
             g(1) = g(1)+ (-n-1)*real(zr,kind)/rpow
