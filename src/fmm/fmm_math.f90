@@ -131,15 +131,23 @@ submodule(fmm) math
         x = cos(gamma)
         y = sin(gamma) !! == sqrt(1-x^2)
         !https://en.wikipedia.org/wiki/Associated_Legendre_polynomials#Recurrence_formula 
+
+        !(0, 0)
+        !write(*,'(a)') "n, m,  P,   x"
         do n = 1, p
             val = -(2*n-1) * y * Pnm%get(n-1,n-1) !recurrence to get top of chain.
-            call Pnm%set(n,n, val)
+            call Pnm%set(n,n, val) !(1,1)
             val = x*(2*n-1)*Pnm%get(n-1,n-1) !recurrence to get one lower.
-            call Pnm%set(n-1,n, val)
+            call Pnm%set(n,n-1, val)!(1,0)
             !top two m values are set. use recurrence to find the others
+   
+            !write(*,'(2I3,2f10.3)')n,n, Pnm%get(n,n), x
+            !write(*,'(2I3,2f10.3)')n,n-1,Pnm%get(n,n-1), x
             do m = n-1, -(n-1), -1
                 val = (2.0_kind*m*x*Pnm%get(n,m)/y - Pnm%get(n,m+1))/((n+m)*(n-m+1.0_kind))
+
                 call Pnm%set(n,m-1,val)
+                !write(*,'(2I3,2f10.3)')n,m-1,Pnm%get(n,m-1), x
             end do
         end do
     end subroutine

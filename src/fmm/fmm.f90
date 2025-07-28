@@ -2,7 +2,7 @@ module fmm
     use constants
     implicit none
     private
-    public :: cluster, calc_mulp_exp_c
+    public :: cluster, calc_mulp_exp_c, eval_mulp_exp_c, Ynm, sph_harm_coeff
     integer, parameter :: p = 5 !!order of interpolation
     type sph_harm_coeff !!Data structure for storing spherical harmonic coefficients c_n^m
     !since each n stores (2n+1) coefficients, a 2d array is inefficient. 1d array is better.
@@ -84,6 +84,25 @@ module fmm
             end do
         end do
     end subroutine
+
+    function eval_mulp_exp_c(clust, r) result(Psi)
+        type(cluster), intent(in) :: clust
+        real(kind), intent(in) :: r(3)
+        type(sph_harm_coeff) :: Y
+        real(kind) ::Psi, invrpow, s
+        integer :: n,m
+        call Ynm(Y, r(2), r(3))
+        Psi = 0
+        do n = 0,p
+            s = 0
+
+            do m = -n, n
+                s = s + Y%get(n,m)*clust%mp_exp%get(n,m)
+            end do
+            invrpow = 1.0_kind/r(1)**(n+1)
+            Psi = Psi + s*invrpow
+        end do
+    end function
 
 
 end module
