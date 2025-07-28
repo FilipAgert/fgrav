@@ -40,6 +40,7 @@ module tree_module
 
         do i =1,8
             !The ISHFTS and IAND are truth tables for 3 variables. x rightmost, y, then z
+            !   0 0 0
             !   0 0 1
             !   0 1 0
             !   0 1 1 etc
