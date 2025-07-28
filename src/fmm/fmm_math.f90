@@ -159,13 +159,13 @@ submodule(fmm) math
         x = cos(gamma)
         y = sin(gamma) !! == sqrt(1-x^2)
         !https://en.wikipedia.org/wiki/Associated_Legendre_polynomials#Recurrence_formula 
-        if(y==0.0_kind) then
+        if(y==0.0_kind) then!! x is either -1 or +1
             do n = 0,p
                 do m = -n, n
                     if(m/=0) then
                         call Pnm%set(n,m,0.0_kind)
                     else
-                        if(mod(n,2)==0) then !If even, Pnm is 1 at endpoints
+                        if(mod(n,2)==0) then !If even, Pnm is 1 at endpoints for m =0
                             call Pnm%set(n,m,1.0_kind)
                         else
                             call Pnm%set(n,m,x)!If odd, Pnm is -1 at x = -1 and +1 at x = +1
@@ -175,9 +175,7 @@ submodule(fmm) math
             end do
             return
         endif
-        !(0, 0)
-        !write(*,'(a)') "n, m,  P,   x"
-        do n = 1, p
+        do n = 1, p!! y is nonzero.
             val = -(2*n-1) * y * Pnm%get(n-1,n-1) !recurrence to get top of chain.
             call Pnm%set(n,n, val) !(1,1)
             val = x*(2*n-1)*Pnm%get(n-1,n-1) !recurrence to get one lower.
