@@ -5,19 +5,27 @@ submodule(fmm) math
         class(sph_harm_coeff_d), intent(in) :: this
         integer, intent(in) :: n, m
         integer :: start, shift
-        start = get_m_ptr(n)
-        !order -m, -(m-1), ... m-1, ms
-        shift = n + m !!= 0 if n = -m, 
-        val = this%data(shift+start)
+        if(abs(m) > n) then
+            val = 0
+        else
+            start = get_m_ptr(n)
+            !order -m, -(m-1), ... m-1, ms
+            shift = n + m !!= 0 if n = -m, 
+            val = this%data(shift+start)
+        endif
     end function
     complex(ckind) module function  get_sph_coeff_c(this, n, m) result(val)
         class(sph_harm_coeff_c), intent(in) :: this
         integer, intent(in) :: n, m
         integer :: start, shift
-        start = get_m_ptr(n)
-        !order -m, -(m-1), ... m-1, ms
-        shift = n + m !!= 0 if n = -m, 
-        val = this%data(shift+start)
+        if(abs(m) > n) then
+            val = complex(0,0)
+        else
+            start = get_m_ptr(n)
+            !order -m, -(m-1), ... m-1, ms
+            shift = n + m !!= 0 if n = -m, 
+            val = this%data(shift+start)
+        endif
     end function
     module subroutine set_sph_coeff(this, n, m, val)
         class(sph_harm_coeff_d), intent(inout) :: this
@@ -112,6 +120,37 @@ submodule(fmm) math
             do mm = -nn,nn
                 val = exp(complex(0,1.0_kind)*mm*phi)
                 call Y%set(nn,mm, Nnm%get(nn,mm) * Pnm%get(nn,abs(mm)) * val)
+            end do
+        end do
+    end subroutine
+
+    module subroutine dYnmdt(dYdt,theta, phi)  !!Gets partial derivative of spherical harmonics from n=0..p evaluated at theta,phi
+        real(kind), intent(in) :: theta,phi
+        type(sph_harm_coeff_d), save :: Nnm !!normalization constant
+        type(sph_harm_coeff_c), intent(out) :: dYdt
+        type(sph_harm_coeff_d) :: Pnm
+        logical, save :: first_time = .true.
+        integer :: nn, mm
+        real(kind) :: norm, cost, invsint
+        complex(ckind):: val
+        cost = cos(theta)
+        invsint = 1.0_kind/sin(theta)
+        if(first_time) then
+            do nn = 0,p
+                do mm = -nn, nn
+                    !norm = sqrt((2.0_kind*nn+1.0_kind) * fac(nn-abs(mm))) / sqrt(4.0_kind*pi * fac(nn+abs(mm)))
+                    norm =  sqrt(fac(nn-abs(mm))) / sqrt(fac(nn+abs(mm)))
+                    !write(*,'(a,2i3,a,f10.3)') "n,m:",nn,mm, ", norm:", norm
+                    call Nnm%set(nn,mm,norm)
+                end do
+            end do
+            first_time = .false.
+        endif
+        call compute_legendre_cos_gamma(theta, Pnm)
+        do nn = 0,p
+            do mm = -nn,nn
+                val = exp(complex(0,1.0_kind)*mm*phi)
+                call dYdt%set(nn,mm, Nnm%get(nn,mm) *val *invsint* (nn*cost*Pnm%get(nn,abs(mm)) -(nn+abs(mm)) * Pnm%get(nn-1,abs(mm))))
             end do
         end do
     end subroutine

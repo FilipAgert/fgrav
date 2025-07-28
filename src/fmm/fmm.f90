@@ -1,8 +1,8 @@
 module fmm
-    use constants
+    use constants, only: kind, ckind
     implicit none
     private
-    public :: cluster, calc_mulp_exp, eval_mulp_exp_c, Ynm, sph_harm_coeff_d, sph_harm_coeff_c
+    public :: cluster, calc_mulp_exp, eval_mulp_exp_c, Ynm, sph_harm_coeff_d, sph_harm_coeff_c, eval_grad_mulpexp
     integer, parameter :: p = 6 !!order of interpolation
     type sph_harm_coeff_d !!Data structure for storing spherical harmonic coefficients c_n^m
     !since each n stores (2n+1) coefficients, a 2d array is inefficient. 1d array is better.
@@ -84,6 +84,11 @@ module fmm
          real(kind) module function fac(n)
             integer, intent(in) :: n
         end function
+
+        module subroutine dYnmdt(dYdt,theta, phi)  !!Gets partial derivative of spherical harmonics from n=0..p evaluated at theta,phi
+            real(kind), intent(in) :: theta,phi
+            type(sph_harm_coeff_c), intent(out) :: dYdt
+        end subroutine
     end interface
 
 
@@ -165,6 +170,42 @@ module fmm
             rpow = rpow*r(1)!r^n+1
             Psi = Psi + REAL(z,kind)/rpow
         end do
+    end function
+
+    !Evaluates the gradient of the potential given by coefficients g at point r.
+   function eval_grad_mulpexp(cf, r) result(g)
+        type(sph_harm_coeff_c),intent(in) :: cf
+        type(sph_harm_coeff_c) :: Y, dYdt
+        real(kind), intent(in) :: r(3) !!point in spherical coordinates
+        real(kind) :: g(3) !!gradient in spherical coordinates
+        real(kind) :: cott, isint, rpow
+        complex(ckind) :: zr, zt, zp, phase
+        integer :: m,n
+        call Ynm(Y, r(2), r(3))
+        call dYnmdt(dYdt, r(2), r(3))!! dYnm dtheta
+        cott = cotan(r(2))
+        isint = 1.0_kind/sin(r(2))
+        rpow = r(1)
+        phase = exp(complex(0.0_kind,-1.0_kind) * r(3))
+        write(*,*) cott, isint
+        g=0
+        do n = 0,p
+            zr = 0
+            zt = 0
+            zp = 0
+
+            do m = -n, n
+                zr = zr + cf%get(n,m)* Y%get(n,m)
+                zp = zp + cf%get(n,m)*complex(0.0_kind, 1.0_kind) * m * isint *  Y%get(n,m)
+                zt = zt + cf%get(n,m)*dYdt%get(n,m)!(m*cott*Y%get(n,m) + sqrt((n-m)*(n+m+1)*1.0_kind)*phase * Y%get(n,m+1))
+            end do
+            rpow = rpow*r(1)!r^n+2
+            g(1) = g(1)+ (-n-1)*real(zr,kind)/rpow
+            g(2) = g(2)+ real(zt,kind)/rpow
+            !write(*,'(6e15.3)') zr,zt,zp
+            g(3) = g(3)+ real(zp,kind)/rpow
+        end do
+
     end function
 
     real(kind) function Anm(n,m)
