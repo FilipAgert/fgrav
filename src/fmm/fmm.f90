@@ -2,7 +2,7 @@ module fmm
     use constants
     implicit none
     private
-    public :: cluster, calc_mulp_exp_c, eval_mulp_exp_c, Ynm, sph_harm_coeff_d, sph_harm_coeff_c
+    public :: cluster, calc_mulp_exp, eval_mulp_exp_c, Ynm, sph_harm_coeff_d, sph_harm_coeff_c
     integer, parameter :: p = 6 !!order of interpolation
     type sph_harm_coeff_d !!Data structure for storing spherical harmonic coefficients c_n^m
     !since each n stores (2n+1) coefficients, a 2d array is inefficient. 1d array is better.
@@ -25,9 +25,11 @@ module fmm
     end type
 
     type cluster
-        real(kind), allocatable :: pos(:,:) ! r, theta, phi
+        real(kind), allocatable :: pos(:,:) ! r, theta, phi. Relative to cluster center.
+        real(kind) :: cluster_pos(3) ! cluster position
         real(kind), allocatable :: weights(:)
         type(sph_harm_coeff_c) :: mp_exp!!multipole expansion coefficients
+        type(sph_harm_coeff_c) :: mp_gl_exp !!Global coordinate system multipole expansion coefficient
     end type
 
      
@@ -84,7 +86,7 @@ module fmm
 
     contains
 
-    subroutine calc_mulp_exp_c(clust)!!Calculates multipole expansion coefficients from a cluster.
+    subroutine calc_mulp_exp(clust)!!Calculates multipole expansion coefficients from a cluster.
         type(cluster), intent(inout) :: clust
         integer :: n, m, i
         real(kind) :: rho, alpha, beta, rhoraised, w
@@ -108,6 +110,39 @@ module fmm
         end do
     end subroutine
 
+    subroutine calc_mulp_gl_exp(clust)!!Calculates global multipole expansion coefficients from a cluster given the local one is already calculated.
+        type(cluster), intent(inout) :: clust
+        integer :: n, m, k, j
+        real(kind) :: rho, alpha, beta, rhoraised, w, rhopow
+        complex(kind) :: z, zm
+        type(sph_harm_coeff_c) :: Y
+        clust%mp_exp%data=0
+
+        rho = clust%cluster_pos(1)
+        alpha=clust%cluster_pos(2)
+        beta = clust%cluster_pos(3)
+        call Ynm(Y, alpha, beta)
+        do j = 0,p
+            do k = -j, j
+                z = 0
+                do n = 0,j
+                    if(n ==0) then
+                        rhopow = 1
+                    else 
+                        rhopow = rhopow * rho
+                    endif
+                    zm = 0
+                    do m = -n, n
+                        zm = zm + clust%mp_exp%get(j-n,k-m) * complex(0,1.0_kind)**(abs(k)-abs(m)-abs(k-m))*Amn(n,m)*Amn(j-n,k-m)*Y%get(n,-m)
+                    end do
+                    z = z + zm*rhopow
+                end do
+                z = z/Anm(k,j)
+                call clust%mp_gl_exp%set(j,k,z)
+            end do
+        end do
+    end subroutine
+
     function eval_mulp_exp_c(clust, r) result(Psi)
         type(cluster), intent(in) :: clust
         real(kind), intent(in) :: r(3)
@@ -127,6 +162,23 @@ module fmm
             rpow = rpow*r(1)!r^n+1
             Psi = Psi + REAL(z,kind)/rpow
         end do
+    end function
+
+    real(kind) function Anm(n,m)
+        logical, save :: first_time = .true.
+        type(sph_harm_coeff_d), save :: A
+        integer, intent(in) :: n,m
+        integer :: nn,mm
+
+        if(first_time) then
+            do nn = 0,p
+                do mm = -nn,nn
+                    call A%set(nn,mm, (-1)**n *1.0_kind / sqrt(fac(n-m)*fac(n+m)))
+                end do
+            end do
+            first_time = .false.
+        endif
+        Anm = A%get(n,m)
     end function
 
 

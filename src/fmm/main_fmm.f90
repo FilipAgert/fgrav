@@ -14,7 +14,7 @@ program main
     allocate(cl%pos(3,1), cl%weights(1))
     cl%pos(:,1) = pos
     cl%weights = weight
-    call calc_mulp_exp_c(cl)
+    call calc_mulp_exp(cl)
 
     r = [3.0_kind, pi/3, pi/4]
     P1 = eval_mulp_exp_c(cl, r)
