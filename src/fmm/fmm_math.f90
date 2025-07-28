@@ -81,6 +81,7 @@ submodule(fmm) math
             do i = 0,p
                 ptr(i) = i*i+1
             end do
+            first_time = .false.
         endif
         get_m_ptr = ptr(n)
         ! n = 0 => 0. n = 1 => 1.    n = 2 => 4 (+ 5 = 9) (+7 = 16) (+9 = 25)
