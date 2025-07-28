@@ -69,6 +69,7 @@ submodule(fmm) math
             do nn = 0,p
                 do mm = -nn, nn
                     norm = sqrt((2.0_kind*nn+1.0_kind) * fac(nn-mm)) / sqrt(4.0_kind*pi * fac(nn+mm))
+                    write(*,'(a,2i3,a,f10.3)') "n,m:",nn,mm, ", norm:", norm
                     call Nnm%set(nn,mm,norm)
                 end do
             end do
@@ -133,7 +134,7 @@ submodule(fmm) math
         !https://en.wikipedia.org/wiki/Associated_Legendre_polynomials#Recurrence_formula 
 
         !(0, 0)
-        !write(*,'(a)') "n, m,  P,   x"
+        write(*,'(a)') "n, m,  P,   x"
         do n = 1, p
             val = -(2*n-1) * y * Pnm%get(n-1,n-1) !recurrence to get top of chain.
             call Pnm%set(n,n, val) !(1,1)
@@ -141,13 +142,17 @@ submodule(fmm) math
             call Pnm%set(n,n-1, val)!(1,0)
             !top two m values are set. use recurrence to find the others
    
-            !write(*,'(2I3,2f10.3)')n,n, Pnm%get(n,n), x
-            !write(*,'(2I3,2f10.3)')n,n-1,Pnm%get(n,n-1), x
+            write(*,'(2I3,2f10.3)')n,n, Pnm%get(n,n), x
+            write(*,'(2I3,2f10.3)')n,n-1,Pnm%get(n,n-1), x
             do m = n-1, -(n-1), -1
-                val = (2.0_kind*m*x*Pnm%get(n,m)/y - Pnm%get(n,m+1))/((n+m)*(n-m+1.0_kind))
+                if(y/=0.0_kind) then
+                    val = -(2.0_kind*m*x*Pnm%get(n,m)/y + Pnm%get(n,m+1))/((n+m)*(n-m+1.0_kind))
+                else
+                    error stop "Legendre not implemented for gamma = 0, pi"
+                endif
 
                 call Pnm%set(n,m-1,val)
-                !write(*,'(2I3,2f10.3)')n,m-1,Pnm%get(n,m-1), x
+                write(*,'(2I3,2f10.3)')n,m-1,Pnm%get(n,m-1), x
             end do
         end do
     end subroutine

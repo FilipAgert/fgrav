@@ -5,24 +5,27 @@ program main
 
     implicit none
     type(cluster) :: cl
-    real(kind) :: pos(3), weight, r(3), P1,P2
-    type(sph_harm_coeff) :: Y
+    real(kind) :: pos(3), weight, r(3), P1,P2, SUM
+    type(sph_harm_coeff) :: Yt, Ys
     integer :: n,m
-    pos = [1.0_kind, pi/2,0.0_kind]
+    pos = [1.0_kind, 0.0_kind,0.0_kind]
     weight = 1.0_kind
     allocate(cl%pos(3,1), cl%weights(1))
     cl%pos(:,1) = pos
     cl%weights = weight
     call calc_mulp_exp_c(cl)
 
-    r = [6.0_kind, pi/2, 0.0_kind]
+    r = [6.0_kind, 0.0_kind, 0.0_kind]
     P1 = eval_mulp_exp_c(cl, r)
     P2 = 1.0_kind/abs(r(1)-pos(1))
-    call Ynm(Y, r(2), r(3))
-    do n = 0, 2
+    call Ynm(Ys, pos(2),pos(3))
+    call Ynm(Yt, r(2), r(3))
+    do n = 0,0
+        SUM = 0
         do m = -n,n
-            write(*,'(2I3,f10.3)') n, m, Y%get(n,m)
+            Sum = Sum+Yt%get(n,m)*Ys%get(n,-m)
         end do
+        write(*,*) "Sum:", sum
     end do
 
     

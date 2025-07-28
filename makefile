@@ -28,8 +28,8 @@ $(DOBJ)/constants.o: $(DSRC)/constants.f90
 $(DOBJ)/out.o: $(DSRC)/out.f90 $(DOBJ)/constants.o $(DOBJ)/body_module.o
 
 $(DOBJ)/main_fmm.o: $(DSRC)/fmm/main_fmm.f90 $(DOBJ)/constants.o $(DOBJ)/fmm.o
-$(DOBJ)/fmm.o: $(DSRC)/fmm/fmm.f90 $(DOBJ)/constants.o $(DOBJ)/fmm_math.o
-$(DOBJ)/fmm_math.o: $(DSRC)/fmm/fmm_math.f90 $(DOBJ)/constants.o
+$(DOBJ)/fmm.o: $(DSRC)/fmm/fmm.f90 $(DOBJ)/constants.o
+$(DOBJ)/fmm_math.o: $(DSRC)/fmm/fmm_math.f90 $(DOBJ)/constants.o $(DOBJ)/fmm.o
 # Default target
 
 
