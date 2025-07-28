@@ -1,11 +1,11 @@
 program main
     use constants
     use fmm
-
+    use tree_module
 
     implicit none
     type(cluster) :: cl
-    real(kind) :: pos(3), weight, r(3), P1,P2, a(3),x,y,z
+    real(kind) :: pos(3), weight, r(3), P1,P2, a(3),ps(3,3), shift(3), scale, bla(3,2), subs(3,2,8)
     complex(kind):: SUM
     type(sph_harm_coeff_c) :: Yt, Ys
     integer :: n,m
@@ -30,4 +30,16 @@ program main
     write(*,'(a,f10.6,a,f10.6)') "Potential: Exp method:", P1, ", actual:", P2
     write(*,'(a,e16.8,a,e16.8)') "Acceleration: Exp method:", sqrt(sum(a*a)), ", actual:", P2*P2
 
+    ps(:,1) = [-1.0_kind, 5.0_kind, 9.0_kind]
+    ps(:,2) = [3.0_kind, 2.0_kind, -1.0_kind]
+    ps(:,3) = [0.0_kind, 7.0_kind, 2.0_kind]
+    call world_to_tree(shift, scale, ps)
+
+    do n = 1,3
+        write(*,'(3f10.3)') ps(:,n)*scale + shift
+    end do
+    bla(1,:) = [0,1]
+    bla(2,:) = [0,1]
+    bla(3,:) = [0,1]
+    subs = subdivide(bla)
 end program

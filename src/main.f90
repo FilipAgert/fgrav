@@ -22,12 +22,12 @@ program main
     call bodies(2)%initialize("Moon", 0.012*3e-6_kind, 0.0_kind)
     call bodies(1)%initialize("Earth", 3.003e-6_kind, 0.0_kind)
     call bodies(3)%initialize("Asteroid", 0.0_kind, 0.0_kind, .true.)
-    call bodies(4)%initialize("x", 3e-7_kind, 0.0_kind)
+    call bodies(4)%initialize("x", 3e-12_kind, 0.0_kind, .True.)
 
     bodies(2)%position = [0.002578,0.0,0.0]
     bodies(2)%velocity = [0.0, 5.88e-4, 0.0] ! circular orbit around Earth
     bodies(3)%position = [0.0,0.004,0.0]; bodies(3)%velocity = [-2.5e-4, 0.0, 0.0] 
-    bodies(4)%position = [0.0,0.012,0.0]; bodies(4)%velocity = [5e-3, -5e-4, 0.0]
+    bodies(4)%position = [0.000,0.005,0.0]; bodies(4)%velocity = [2.0e-4, 0.0, 0.0]
     
     ! Simulation setup
     numdays = 365 * 15 ! simulate 15 years

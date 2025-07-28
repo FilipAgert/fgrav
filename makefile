@@ -15,7 +15,7 @@ CC = gfortran $(FLAGS) -J$(DMOD) $(LIBS) -c
 CCL = gfortran -o
 
 # Objects
-OBJECTS = $(DOBJ)/constants.o $(DOBJ)/body_module.o $(DOBJ)/sim.o $(DOBJ)/out.o $(DOBJ)/fmm.o $(DOBJ)/fmm_math.o
+OBJECTS = $(DOBJ)/constants.o $(DOBJ)/body_module.o $(DOBJ)/sim.o $(DOBJ)/out.o $(DOBJ)/fmm.o $(DOBJ)/fmm_math.o $(DOBJ)/tree.o
 
 MAIN_OBJ = $(DOBJ)/main.o
 
@@ -27,9 +27,10 @@ $(DOBJ)/body_module.o: $(DSRC)/body_module.f90 $(DOBJ)/constants.o
 $(DOBJ)/constants.o: $(DSRC)/constants.f90
 $(DOBJ)/out.o: $(DSRC)/out.f90 $(DOBJ)/constants.o $(DOBJ)/body_module.o
 
-$(DOBJ)/main_fmm.o: $(DSRC)/fmm/main_fmm.f90 $(DOBJ)/constants.o $(DOBJ)/fmm.o
+$(DOBJ)/main_fmm.o: $(DSRC)/fmm/main_fmm.f90 $(DOBJ)/constants.o $(DOBJ)/fmm.o $(DOBJ)/tree.o
 $(DOBJ)/fmm.o: $(DSRC)/fmm/fmm.f90 $(DOBJ)/constants.o
 $(DOBJ)/fmm_math.o: $(DSRC)/fmm/fmm_math.f90 $(DOBJ)/constants.o $(DOBJ)/fmm.o
+$(DOBJ)/tree.o: $(DSRC)/fmm/tree.f90 $(DOBJ)/constants.o
 # Default target
 
 
