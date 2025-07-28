@@ -84,7 +84,7 @@ submodule(fmm) math
             first_time = .false.
         endif
         get_m_ptr = ptr(n)
-        ! n = 0 => 0. n = 1 => 1.    n = 2 => 4 (+ 5 = 9) (+7 = 16) (+9 = 25)
+        ! n = 0 => 1. n = 1 => 2.    n = 2 => 5 (+ 5 = 10) (+7 = 17) (+9 = 26) (n^2+1)
     end function
 
     module subroutine Ynm(Y,theta, phi)  !!Gets spherical harmonics from n=0..p evaluated at theta,phi
@@ -116,7 +116,7 @@ submodule(fmm) math
         end do
     end subroutine
 
-    real(kind) function fac(n)
+    real(kind) module function fac(n)
         integer, intent(in) :: n
         logical, save :: first_time = .true.
         integer, parameter :: maxf = 170
@@ -159,7 +159,22 @@ submodule(fmm) math
         x = cos(gamma)
         y = sin(gamma) !! == sqrt(1-x^2)
         !https://en.wikipedia.org/wiki/Associated_Legendre_polynomials#Recurrence_formula 
-
+        if(y==0.0_kind) then
+            do n = 0,p
+                do m = -n, n
+                    if(m/=0) then
+                        call Pnm%set(n,m,0.0_kind)
+                    else
+                        if(mod(n,2)==0) then !If even, Pnm is 1 at endpoints
+                            call Pnm%set(n,m,1.0_kind)
+                        else
+                            call Pnm%set(n,m,x)!If odd, Pnm is -1 at x = -1 and +1 at x = +1
+                        endif
+                    endif
+                end do
+            end do
+            return
+        endif
         !(0, 0)
         !write(*,'(a)') "n, m,  P,   x"
         do n = 1, p
@@ -175,7 +190,7 @@ submodule(fmm) math
                 if(y/=0.0_kind) then
                     val = -(2.0_kind*m*x*Pnm%get(n,m)/y + Pnm%get(n,m+1))/((n+m)*(n-m+1.0_kind))
                 else
-                    error stop "Legendre not implemented for gamma = 0, pi"
+                    error stop "Should not be here. Legendre error. "
                 endif
 
                 call Pnm%set(n,m-1,val)

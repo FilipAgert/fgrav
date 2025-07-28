@@ -16,7 +16,7 @@ program main
     cl%weights = weight
     call calc_mulp_exp(cl)
 
-    r = [3.0_kind, pi/3, pi/4]
+    r = [3.0_kind, 0.0_kind, pi/4]
     P1 = eval_mulp_exp_c(cl, r)
     P2 = 1.0_kind/&
     sqrt(r(1)**2 + pos(1)**2 - 2*r(1)*pos(1)*(sin(r(2))*sin(pos(2))*cos(r(3)-pos(3))  + cos(r(2))*cos(pos(2))))

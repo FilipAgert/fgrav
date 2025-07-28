@@ -81,6 +81,9 @@ module fmm
             real(kind), intent(in) :: theta,phi
         end subroutine
 
+         real(kind) module function fac(n)
+            integer, intent(in) :: n
+        end function
     end interface
 
 
@@ -133,7 +136,7 @@ module fmm
                     endif
                     zm = 0
                     do m = -n, n
-                        zm = zm + clust%mp_exp%get(j-n,k-m) * complex(0,1.0_kind)**(abs(k)-abs(m)-abs(k-m))*Amn(n,m)*Amn(j-n,k-m)*Y%get(n,-m)
+                        zm = zm + clust%mp_exp%get(j-n,k-m) * complex(0,1.0_kind)**(abs(k)-abs(m)-abs(k-m))*Anm(n,m)*Anm(j-n,k-m)*Y%get(n,-m)
                     end do
                     z = z + zm*rhopow
                 end do
