@@ -2,7 +2,16 @@ submodule(fmm) math
     contains
 
     real(kind) module function  get_sph_coeff(this, n, m) result(val)
-        class(sph_harm_coeff), intent(in) :: this
+        class(sph_harm_coeff_d), intent(in) :: this
+        integer, intent(in) :: n, m
+        integer :: start, shift
+        start = get_m_ptr(n)
+        !order -m, -(m-1), ... m-1, ms
+        shift = n + m !!= 0 if n = -m, 
+        val = this%data(shift+start)
+    end function
+    complex(kind) module function  get_sph_coeff_c(this, n, m) result(val)
+        class(sph_harm_coeff_c), intent(in) :: this
         integer, intent(in) :: n, m
         integer :: start, shift
         start = get_m_ptr(n)
@@ -11,7 +20,7 @@ submodule(fmm) math
         val = this%data(shift+start)
     end function
     module subroutine set_sph_coeff(this, n, m, val)
-        class(sph_harm_coeff), intent(inout) :: this
+        class(sph_harm_coeff_d), intent(inout) :: this
         integer, intent(in) :: n, m
         real(kind), intent(in) ::val
         integer :: start, shift
@@ -20,9 +29,19 @@ submodule(fmm) math
         shift = n + m !!= 0 if n = -m, 
         this%data(shift+start) = val
     end subroutine
+    module subroutine set_sph_coeff_c(this, n, m, val)
+        class(sph_harm_coeff_c), intent(inout) :: this
+        integer, intent(in) :: n, m
+        complex(kind), intent(in) ::val
+        integer :: start, shift
+        start = get_m_ptr(n)
+        !order -m, -(m-1), ... m-1, m
+        shift = n + m !!= 0 if n = -m, 
+        this%data(shift+start) = val
+    end subroutine
 
     module subroutine add_sph_coeff(this, n, m, val)
-        class(sph_harm_coeff), intent(inout) :: this
+        class(sph_harm_coeff_d), intent(inout) :: this
         integer, intent(in) :: n, m
         real(kind), intent(in) ::val
         integer :: start, shift
@@ -31,9 +50,19 @@ submodule(fmm) math
         shift = n + m !!= 0 if n = -m, 
         this%data(shift+start) = this%data(shift+start) + val
     end subroutine
+    module subroutine add_sph_coeff_c(this, n, m, val)
+        class(sph_harm_coeff_c), intent(inout) :: this
+        integer, intent(in) :: n, m
+        complex(kind), intent(in) ::val
+        integer :: start, shift
+        start = get_m_ptr(n)
+        !order -m, -(m-1), ... m-1, m
+        shift = n + m !!= 0 if n = -m, 
+        this%data(shift+start) = this%data(shift+start) + val
+    end subroutine
 
     module subroutine mul_sph_coeff(this, n, m, val)
-        class(sph_harm_coeff), intent(inout) :: this
+        class(sph_harm_coeff_d), intent(inout) :: this
         integer, intent(in) :: n, m
         real(kind), intent(in) ::val
         integer :: start, shift
@@ -59,17 +88,18 @@ submodule(fmm) math
 
     module subroutine Ynm(Y,theta, phi)  !!Gets spherical harmonics from n=0..p evaluated at theta,phi
         real(kind), intent(in) :: theta,phi
-        type(sph_harm_coeff), save :: Nnm !!normalization constant
-        type(sph_harm_coeff), intent(out) :: Y
-        type(sph_harm_coeff) :: Pnm
+        type(sph_harm_coeff_d), save :: Nnm !!normalization constant
+        type(sph_harm_coeff_c), intent(out) :: Y
+        type(sph_harm_coeff_d) :: Pnm
         logical, save :: first_time = .true.
         integer :: nn, mm
-        real(kind) :: norm, val
+        real(kind) :: norm
+        complex(kind):: val
         if(first_time) then
             do nn = 0,p
                 do mm = -nn, nn
-                    norm = sqrt((2.0_kind*nn+1.0_kind) * fac(nn-mm)) / sqrt(4.0_kind*pi * fac(nn+mm))
-                    write(*,'(a,2i3,a,f10.3)') "n,m:",nn,mm, ", norm:", norm
+                    norm = sqrt((2.0_kind*nn+1.0_kind) * fac(nn-abs(mm))) / sqrt(4.0_kind*pi * fac(nn+abs(mm)))
+                    !write(*,'(a,2i3,a,f10.3)') "n,m:",nn,mm, ", norm:", norm
                     call Nnm%set(nn,mm,norm)
                 end do
             end do
@@ -78,13 +108,8 @@ submodule(fmm) math
         call compute_legendre_cos_gamma(theta, Pnm)
         do nn = 0,p
             do mm = -nn,nn
-                val = 1
-                if(mm < 0) then
-                    val =sin(-mm*phi)
-                else if (mm > 0) then
-                    val = cos(mm*phi)
-                endif
-                call Y%set(nn,mm, Nnm%get(nn,mm) * Pnm%get(nn,mm) * val)
+                val = exp(complex(0,1.0_kind)*mm*phi)
+                call Y%set(nn,mm, Nnm%get(nn,mm) * Pnm%get(nn,abs(mm)) * val)
             end do
         end do
     end subroutine
@@ -125,7 +150,7 @@ submodule(fmm) math
     subroutine compute_legendre_cos_gamma(gamma, Pnm)
         real(kind), intent(in) :: gamma
         real(kind) :: x, val, y
-        type(sph_harm_coeff), intent(inout) :: Pnm
+        type(sph_harm_coeff_d), intent(inout) :: Pnm
         integer :: n,m
         call Pnm%set(0,0,1.0_kind)
 
@@ -134,7 +159,7 @@ submodule(fmm) math
         !https://en.wikipedia.org/wiki/Associated_Legendre_polynomials#Recurrence_formula 
 
         !(0, 0)
-        write(*,'(a)') "n, m,  P,   x"
+        !write(*,'(a)') "n, m,  P,   x"
         do n = 1, p
             val = -(2*n-1) * y * Pnm%get(n-1,n-1) !recurrence to get top of chain.
             call Pnm%set(n,n, val) !(1,1)
@@ -142,8 +167,8 @@ submodule(fmm) math
             call Pnm%set(n,n-1, val)!(1,0)
             !top two m values are set. use recurrence to find the others
    
-            write(*,'(2I3,2f10.3)')n,n, Pnm%get(n,n), x
-            write(*,'(2I3,2f10.3)')n,n-1,Pnm%get(n,n-1), x
+            !write(*,'(2I3,2f10.3)')n,n, Pnm%get(n,n), x
+            !write(*,'(2I3,2f10.3)')n,n-1,Pnm%get(n,n-1), x
             do m = n-1, -(n-1), -1
                 if(y/=0.0_kind) then
                     val = -(2.0_kind*m*x*Pnm%get(n,m)/y + Pnm%get(n,m+1))/((n+m)*(n-m+1.0_kind))
@@ -152,7 +177,7 @@ submodule(fmm) math
                 endif
 
                 call Pnm%set(n,m-1,val)
-                write(*,'(2I3,2f10.3)')n,m-1,Pnm%get(n,m-1), x
+                !write(*,'(2I3,2f10.3)')n,m-1,Pnm%get(n,m-1), x
             end do
         end do
     end subroutine
