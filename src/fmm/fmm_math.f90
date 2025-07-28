@@ -98,7 +98,8 @@ submodule(fmm) math
         if(first_time) then
             do nn = 0,p
                 do mm = -nn, nn
-                    norm = sqrt((2.0_kind*nn+1.0_kind) * fac(nn-abs(mm))) / sqrt(4.0_kind*pi * fac(nn+abs(mm)))
+                    !norm = sqrt((2.0_kind*nn+1.0_kind) * fac(nn-abs(mm))) / sqrt(4.0_kind*pi * fac(nn+abs(mm)))
+                    norm =  sqrt(fac(nn-abs(mm))) / sqrt(fac(nn+abs(mm)))
                     !write(*,'(a,2i3,a,f10.3)') "n,m:",nn,mm, ", norm:", norm
                     call Nnm%set(nn,mm,norm)
                 end do

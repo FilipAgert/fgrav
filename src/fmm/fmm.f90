@@ -3,7 +3,7 @@ module fmm
     implicit none
     private
     public :: cluster, calc_mulp_exp_c, eval_mulp_exp_c, Ynm, sph_harm_coeff_d, sph_harm_coeff_c
-    integer, parameter :: p = 5 !!order of interpolation
+    integer, parameter :: p = 6 !!order of interpolation
     type sph_harm_coeff_d !!Data structure for storing spherical harmonic coefficients c_n^m
     !since each n stores (2n+1) coefficients, a 2d array is inefficient. 1d array is better.
         real(kind), private :: data((p+1)**2)
