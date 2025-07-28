@@ -16,7 +16,7 @@ module fmm
 
     type sph_harm_coeff_c !!Data structure for storing spherical harmonic coefficients c_n^m
     !since each n stores (2n+1) coefficients, a 2d array is inefficient. 1d array is better.
-        complex(kind), private :: data((p+1)**2)
+        complex(ckind), private :: data((p+1)**2)
         contains
             procedure :: get => get_sph_coeff_c
             procedure :: set => set_sph_coeff_c
@@ -38,7 +38,7 @@ module fmm
             class(sph_harm_coeff_d), intent(in) :: this
             integer, intent(in) :: n, m
         end function
-        module complex(kind) function get_sph_coeff_c(this, n, m)
+        module complex(ckind) function get_sph_coeff_c(this, n, m)
             class(sph_harm_coeff_c), intent(in) :: this
             integer, intent(in) :: n, m
         end function
@@ -53,7 +53,7 @@ module fmm
         module subroutine set_sph_coeff_c(this, n,m,val)
             class(sph_harm_coeff_c), intent(inout) :: this
             integer, intent(in) :: n, m
-            complex(kind), intent(in) ::val
+            complex(ckind), intent(in) ::val
         end subroutine
 
         ! M(n,m) += val
@@ -65,7 +65,7 @@ module fmm
         module subroutine add_sph_coeff_c(this, n,m,val)
             class(sph_harm_coeff_c), intent(inout) :: this
             integer, intent(in) :: n, m
-            complex(kind), intent(in) ::val
+            complex(ckind), intent(in) ::val
         end subroutine
 
 
@@ -93,7 +93,7 @@ module fmm
         type(cluster), intent(inout) :: clust
         integer :: n, m, i
         real(kind) :: rho, alpha, beta, rhoraised, w
-        complex(kind) :: z
+        complex(ckind) :: z
         type(sph_harm_coeff_c) :: Y
         clust%mp_exp%data=0
 
@@ -117,7 +117,7 @@ module fmm
         type(cluster), intent(inout) :: clust
         integer :: n, m, k, j
         real(kind) :: rho, alpha, beta, rhoraised, w, rhopow
-        complex(kind) :: z, zm
+        complex(ckind) :: z, zm
         type(sph_harm_coeff_c) :: Y
         clust%mp_exp%data=0
 
@@ -151,7 +151,7 @@ module fmm
         real(kind), intent(in) :: r(3)
         type(sph_harm_coeff_c) :: Y
         real(kind) ::Psi, rpow
-        complex(kind) :: z
+        complex(ckind) :: z
         integer :: n,m
         call Ynm(Y, r(2), r(3))
         Psi = 0

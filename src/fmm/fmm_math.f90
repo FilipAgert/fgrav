@@ -10,7 +10,7 @@ submodule(fmm) math
         shift = n + m !!= 0 if n = -m, 
         val = this%data(shift+start)
     end function
-    complex(kind) module function  get_sph_coeff_c(this, n, m) result(val)
+    complex(ckind) module function  get_sph_coeff_c(this, n, m) result(val)
         class(sph_harm_coeff_c), intent(in) :: this
         integer, intent(in) :: n, m
         integer :: start, shift
@@ -32,7 +32,7 @@ submodule(fmm) math
     module subroutine set_sph_coeff_c(this, n, m, val)
         class(sph_harm_coeff_c), intent(inout) :: this
         integer, intent(in) :: n, m
-        complex(kind), intent(in) ::val
+        complex(ckind), intent(in) ::val
         integer :: start, shift
         start = get_m_ptr(n)
         !order -m, -(m-1), ... m-1, m
@@ -53,7 +53,7 @@ submodule(fmm) math
     module subroutine add_sph_coeff_c(this, n, m, val)
         class(sph_harm_coeff_c), intent(inout) :: this
         integer, intent(in) :: n, m
-        complex(kind), intent(in) ::val
+        complex(ckind), intent(in) ::val
         integer :: start, shift
         start = get_m_ptr(n)
         !order -m, -(m-1), ... m-1, m
@@ -95,7 +95,7 @@ submodule(fmm) math
         logical, save :: first_time = .true.
         integer :: nn, mm
         real(kind) :: norm
-        complex(kind):: val
+        complex(ckind):: val
         if(first_time) then
             do nn = 0,p
                 do mm = -nn, nn

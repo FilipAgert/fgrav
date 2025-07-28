@@ -1,5 +1,5 @@
 module constants
-    integer, parameter :: kind = 8
+    integer, parameter :: kind = 8, ckind = 16
     real(kind),parameter :: G_Au = 2.959e-4 !Au^3 /(day*Msun)
     real(kind), parameter :: G=G_Au
     real(kind),parameter :: M_sun = 1.9885e30 ! kg
