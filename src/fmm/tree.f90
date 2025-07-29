@@ -3,9 +3,9 @@ module tree_module
     use fmm, only:cluster, calc_mulp_exp, calc_mulp_gl_exp
     implicit none
     private
-    integer, parameter :: clust_ceil = 10 !! 10 particles per cluster
+    integer, parameter :: clust_ceil = 20 !! particles per cluster
     
-    public world_to_tree, subdivide, tree
+    public world_to_tree, subdivide, tree, print
 
     !When we create a subcube => the subcubes must recursively walk the tree
     !and get pointers to all nodes in the tree with near field
@@ -16,7 +16,7 @@ module tree_module
         integer :: numChild = 0 !!Number of chilren and their children etc
         type(treeptr), allocatable :: child_arr(:)
         type(tree), pointer :: parent => null()
-        type(cluster) :: clust
+        type(cluster), allocatable :: clust
         contains
 
         procedure, pass(this) :: isRoot
@@ -36,7 +36,7 @@ module tree_module
     
     logical function isEmpty(this)
         class(tree), intent(in) :: this
-        isEmpty = .not. allocated(this%clust%pos)
+        isEmpty = .not. allocated(this%clust)
         if(.not. isEmpty) then
             isEmpty = size(this%clust%weights,1) == 0
         endif
@@ -68,10 +68,14 @@ module tree_module
                 this%child_arr(ii)%child%bounds = subs(:,:,ii)
                 this%child_arr(ii)%child%width = this%width*0.5_kind
                 call assign_clust(this%child_arr(ii)%child, this%clust)
+                if(this%child_arr(ii)%child%isEmpty()) cycle !If child has no points, dont compute anything.
                 call calc_clust(this%child_arr(ii)%child)!!Precompute the multipole expansion for this cluster.
-                call this%child_arr(ii)%child%split()
+                call split(this%child_arr(ii)%child)
             end do
+        else
+            !write(*,*) "Didnt split, size of weights:", size(this%clust%weights,1)
         endif
+        !else, do nothing as this node only has a few particles inside. Dont need to subdivide further.
     end subroutine
 
     recursive function getRoot(this) result(root)
@@ -85,6 +89,8 @@ module tree_module
         endif
     end function
 
+    !!In the tree, adds all nodes which are nearfield to nears and all nodes which are far field to fars.
+    !!Excludes self in both of these since we dont want selfinteraction for a particle.
     subroutine startDescentNearFar(origin, nears, nearIdx, fars, farsIdx)
         type(tree), intent(in), pointer :: origin
         type(treeptr), intent(out), allocatable :: nears(:), fars(:)
@@ -93,7 +99,7 @@ module tree_module
         type(tree), pointer :: root
         root => getRoot(origin)
         numnodes = root%numChild
-        allocate(nears(numNodes), fars(numnodes))
+        allocate(nears(numNodes), fars(numnodes)) !worst case array size is ALL nodes in one of the arrays.
         nearIdx = 0
         farsIdx = 0
         call descentAddNearFar(origin, root, nears, nearIdx, fars, farsIdx)
@@ -124,14 +130,13 @@ module tree_module
 
     end subroutine
 
-    !!Near field if this box touches other box (including diagonal)
     pure logical function isNearField(this, other)
         type(tree), intent(in) :: this, other
-        logical t(3)
-        t = this%bounds(:,1) <= other%bounds(:,2) .and. other%bounds(:,1) <= this%bounds(:,2)
-        isNearField = ALL(t)
-        !Touching if my min is smaller than their max AND their min is smaller than my max
-        !e.g. for A = [0.25, 0.5] B=[0.5, 0.75]. A.min <= B.max .and. B.min <= A.max
+        real(kind) :: centerdist
+        real(kind), parameter :: distToCorner = sqrt(3.0_kind)/2.0_kind !distance to corner from center
+        !of a unit cube
+        centerdist = sqrt(sum((this%clust%cluster_pos-other%clust%cluster_pos)**2,1))
+        isNearField = centerdist < (this%width + other%width)*distToCorner
     end function
 
     !!From a parents cluster, take relevant points into this cluster's 
@@ -139,22 +144,24 @@ module tree_module
         type(tree), intent(inout) :: this
         type(cluster), intent(in) ::parent_clust
         integer :: ctr, ii
+        real(kind) :: shift(3)
         ctr = 0
         do ii = 1, size(parent_clust%weights,1)
             if (contains_point(this%bounds, parent_clust%pos(:,ii))) ctr = ctr + 1
         end do
         if(ctr > 0) then
+            allocate(this%clust)
             allocate(this%clust%pos(3,ctr), this%clust%weights(ctr))
             ctr = 0
             this%clust%cluster_pos = (this%bounds(:,2) + this%bounds(:,1) )/2.0_kind
             do ii = 1, size(parent_clust%weights,1)
                 if (contains_point(this%bounds, parent_clust%pos(:,ii)))then
+                    ctr = ctr + 1
                     this%clust%pos(:,ctr) = parent_clust%pos(:,ii)
                     this%clust%weights(ctr) = parent_clust%weights(ii)
                 endif
             end do
-            !Positions are all relative center of cluster.
-            this%clust%pos = this%clust%pos - (this%clust%cluster_pos - parent_clust%cluster_pos)
+
         endif
     end subroutine
 
@@ -211,5 +218,40 @@ module tree_module
         end do
     end function
 
+    recursive subroutine dealloc(this)
+        type(tree), intent(inout), pointer :: this
+        integer :: ii
+        if(allocated(this%clust%pos)) deallocate(this%clust%pos)
+        if(allocated(this%clust%weights)) deallocate(this%clust%weights)
+        if(allocated(this%clust)) deallocate(this%clust)
+        if(isLeaf(this)) then
 
+        else
+            do ii = 1,8
+                call dealloc(this%child_arr(ii)%child)
+            end do
+        endif
+    end subroutine
+
+    recursive subroutine print(this, level)
+        type(tree), pointer ::this
+        integer, intent(in)::level
+        integer :: ii
+        write(*,*) 
+        write(*,'(a,i3)') "Level:", level
+        write(*,'(a,i4)') "number of nodes: ", size(this%clust%weights,1)
+        write(*,'(a,f5.3,1x,f5.3,a,f5.3,1x,f5.3,a,f5.3,1x,f5.3)') "x:", this%bounds(1,:), ", y:", this%bounds(2,:), ", z:", this%bounds(3,:)
+        do ii = 1, size(this%clust%weights,1)
+            write(*,'(a,f5.3,1x,f5.3,1x,f5.3,a)') "[",this%clust%pos(:,ii),"]"
+        end do
+
+        if(.not. this%isLeaf()) then
+            do ii = 1, 8
+                if(.not. this%child_arr(ii)%child%isEmpty()) call print(this%child_arr(ii)%child,level + 1)
+            end do
+
+        endif
+
+        
+    end subroutine
 end module

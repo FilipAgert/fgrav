@@ -3,7 +3,7 @@ module fmm
     implicit none
     private
     public :: cluster, calc_mulp_exp, eval_mulp_exp_c, Ynm, sph_harm_coeff_d, sph_harm_coeff_c, eval_grad_mulpexp, calc_mulp_gl_exp
-    integer, parameter :: p = 16 !!order of interpolation
+    integer, parameter :: p = 6 !!order of interpolation
     type sph_harm_coeff_d !!Data structure for storing spherical harmonic coefficients c_n^m
     !since each n stores (2n+1) coefficients, a 2d array is inefficient. 1d array is better.
         real(kind), private :: data((p+1)**2)
@@ -25,8 +25,8 @@ module fmm
     end type
 
     type cluster
-        real(kind), allocatable :: pos(:,:) ! r, theta, phi. Relative to cluster center.
-        real(kind) :: cluster_pos(3) ! cluster position
+        real(kind), allocatable :: pos(:,:) ! x, y, z global coordinates.
+        real(kind) :: cluster_pos(3) ! cluster center
         real(kind), allocatable :: weights(:)
         type(sph_harm_coeff_c) :: mp_exp!!multipole expansion coefficients
         type(sph_harm_coeff_c) :: mp_gl_exp !!Global coordinate system multipole expansion coefficient
@@ -88,23 +88,28 @@ module fmm
 
 
     contains
-
+    pure function toSpherical(cart) result(sph)
+        real(kind), intent(in) :: cart(3)
+        real(kind) :: sph(3)
+        sph(1) = sqrt(sum(cart*cart,1))
+        sph(2) = acos(cart(3)/sph(1))
+        sph(3) = atan2(cart(2),cart(1))
+    end function
     subroutine calc_mulp_exp(clust)!!Calculates multipole expansion coefficients from a cluster.
         type(cluster), intent(inout) :: clust
         integer :: n, m, i
-        real(kind) :: rho, alpha, beta, rhoraised, w
+        real(kind) :: rhoraised, w, sph(3)
         complex(ckind) :: z
         type(sph_harm_coeff_c) :: Y
         clust%mp_exp%data=0
 
         do i = 1, size(clust%weights,1)
-            rho = clust%pos(1,i)
-            alpha = clust%pos(2,i)
-            beta = clust%pos(3,i)
+            sph = toSpherical(clust%pos(:,i)-clust%cluster_pos)!psherical coordinates wrp center of cluster
             w = clust%weights(i)
-            call Ynm(Y, alpha, beta)
+            call Ynm(Y, sph(2), sph(3))
+            rhoraised = 1.0_kind/sph(1)
             do n = 0,p
-                rhoraised = rho**n
+                rhoraised = rhoraised*sph(1)!r^n
                 do m = -n,n
                     z = Y%get(n,-m)
                     call clust%mp_exp%add(n, m, z*rhoraised*w)
@@ -116,14 +121,14 @@ module fmm
     subroutine calc_mulp_gl_exp(clust)!!Calculates global multipole expansion coefficients from a cluster given the local one is already calculated.
         type(cluster), intent(inout) :: clust
         integer :: n, m, k, j
-        real(kind) :: rho, alpha, beta, rhoraised, w, rhopow
+        real(kind) :: rho, alpha, beta, rhopow, sph(3)
         complex(ckind) :: z, zm
         type(sph_harm_coeff_c) :: Y
         clust%mp_gl_exp%data=0
-
-        rho = clust%cluster_pos(1)
-        alpha=clust%cluster_pos(2)
-        beta = clust%cluster_pos(3)
+        sph = toSpherical(clust%cluster_pos)
+        rho = sph(1)
+        alpha= sph(2)
+        beta = sph(3)
         call Ynm(Y, alpha, beta)
         do j = 0,p
             do k = -j, j
@@ -148,7 +153,7 @@ module fmm
 
     function eval_mulp_exp_c(clust, r) result(Psi)
         type(cluster), intent(in) :: clust
-        real(kind), intent(in) :: r(3)
+        real(kind), intent(in) :: r(3) !in spherical coordinates
         type(sph_harm_coeff_c) :: Y
         real(kind) ::Psi, rpow
         complex(ckind) :: z
