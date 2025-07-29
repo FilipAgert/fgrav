@@ -1,4 +1,6 @@
 submodule(fmm) math
+    integer ::i
+    integer, parameter :: m_ptr(0:p) = [(i*i+1,i=0,p)]
     contains
 
     real(kind) module function  get_sph_coeff(this, n, m) result(val)
@@ -8,7 +10,7 @@ submodule(fmm) math
         if(abs(m) > n) then
             val = 0
         else
-            start = get_m_ptr(n)
+            start = m_ptr(n)
             !order -m, -(m-1), ... m-1, ms
             shift = n + m !!= 0 if n = -m, 
             val = this%data(shift+start)
@@ -21,7 +23,7 @@ submodule(fmm) math
         if(abs(m) > n) then
             val = complex(0,0)
         else
-            start = get_m_ptr(n)
+            start = m_ptr(n)
             !order -m, -(m-1), ... m-1, ms
             shift = n + m !!= 0 if n = -m, 
             val = this%data(shift+start)
@@ -32,7 +34,7 @@ submodule(fmm) math
         integer, intent(in) :: n, m
         real(kind), intent(in) ::val
         integer :: start, shift
-        start = get_m_ptr(n)
+        start = m_ptr(n)
         !order -m, -(m-1), ... m-1, m
         shift = n + m !!= 0 if n = -m, 
         this%data(shift+start) = val
@@ -42,7 +44,7 @@ submodule(fmm) math
         integer, intent(in) :: n, m
         complex(ckind), intent(in) ::val
         integer :: start, shift
-        start = get_m_ptr(n)
+        start = m_ptr(n)
         !order -m, -(m-1), ... m-1, m
         shift = n + m !!= 0 if n = -m, 
         this%data(shift+start) = val
@@ -53,7 +55,7 @@ submodule(fmm) math
         integer, intent(in) :: n, m
         real(kind), intent(in) ::val
         integer :: start, shift
-        start = get_m_ptr(n)
+        start = m_ptr(n)
         !order -m, -(m-1), ... m-1, m
         shift = n + m !!= 0 if n = -m, 
         this%data(shift+start) = this%data(shift+start) + val
@@ -63,7 +65,7 @@ submodule(fmm) math
         integer, intent(in) :: n, m
         complex(ckind), intent(in) ::val
         integer :: start, shift
-        start = get_m_ptr(n)
+        start = m_ptr(n)
         !order -m, -(m-1), ... m-1, m
         shift = n + m !!= 0 if n = -m, 
         this%data(shift+start) = this%data(shift+start) + val
@@ -74,26 +76,11 @@ submodule(fmm) math
         integer, intent(in) :: n, m
         real(kind), intent(in) ::val
         integer :: start, shift
-        start = get_m_ptr(n)
+        start = m_ptr(n)
         !order -m, -(m-1), ... m-1, m
         shift = n + m !!= 0 if n = -m, 
         this%data(shift+start) = this%data(shift+start) * val
     end subroutine
-
-    integer function get_m_ptr(n)
-        integer, intent(in) :: n
-        integer, dimension(0:p), save :: ptr
-        integer :: i
-        logical, save :: first_time = .true.
-        if(first_time) then
-            do i = 0,p
-                ptr(i) = i*i+1
-            end do
-            first_time = .false.
-        endif
-        get_m_ptr = ptr(n)
-        ! n = 0 => 1. n = 1 => 2.    n = 2 => 5 (+ 5 = 10) (+7 = 17) (+9 = 26) (n^2+1)
-    end function
 
     module subroutine Ynm(Y,theta, phi)  !!Gets spherical harmonics from n=0..p evaluated at theta,phi
         real(kind), intent(in) :: theta,phi
