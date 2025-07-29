@@ -90,7 +90,7 @@ module tree_module
                 this%child_arr(ii)%child%width = this%width*0.5_kind
                 call assign_clust(this%child_arr(ii)%child, this%clust, index)
                 if(this%child_arr(ii)%child%isEmpty()) cycle !If child has no points, dont compute anything.
-                !call calc_clust(this%child_arr(ii)%child)!!Precompute the multipole expansion for this cluster.
+                call calc_clust(this%child_arr(ii)%child)!!Precompute the multipole expansion for this cluster.
                 call split(this%child_arr(ii)%child)
             end do
         else

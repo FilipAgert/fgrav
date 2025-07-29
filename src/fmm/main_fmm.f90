@@ -4,7 +4,7 @@ program main
     use tree_module
 
     implicit none
-    integer, parameter ::numparticles =50
+    integer, parameter ::numparticles =2000
     real(kind) :: cords(3,numparticles), weights(numparticles)
     type(tree), pointer :: root
     call rand(cords)

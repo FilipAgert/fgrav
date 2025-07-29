@@ -103,7 +103,6 @@ module fmm
         complex(ckind) :: z
         type(sph_harm_coeff_c) :: Y
         clust%mp_exp%data=0
-        write(*,*) clust%startidx, clust%stopidx
         do i = clust%startidx, clust%stopidx - 1
             sph = toSpherical(clust%pos(:,i)-clust%cluster_pos)!psherical coordinates wrp center of cluster
             w = clust%weights(i)
