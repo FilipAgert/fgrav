@@ -5,7 +5,7 @@ module tree_module
     private
     integer, parameter :: clust_ceil = 20 !! particles per cluster
     
-    public world_to_tree, subdivide, tree, print
+    public world_to_tree, subdivide, tree, print, root_constructor
 
     !When we create a subcube => the subcubes must recursively walk the tree
     !and get pointers to all nodes in the tree with near field
@@ -33,7 +33,24 @@ module tree_module
 
     contains
 
-    
+    subroutine root_constructor(this, pos, weights)
+        type(tree), pointer :: this
+        real(kind), dimension(:,:) ::pos
+        real(kind), dimension(:) :: weights
+        allocate(this)
+        this%bounds(:,1) = 0
+        this%bounds(:,2) = 1
+        this%width = 1
+        allocate(this%clust)
+        allocate(this%clust%pos(3,size(weights)))
+        allocate(this%clust%weights(size(weights)))
+        this%clust%cluster_pos =0.5
+        this%clust%pos = pos
+        this%clust%weights = weights
+        this%clust%startidx=1
+        this%clust%stopidx = size(weights) + 1
+    end subroutine
+
     logical function isEmpty(this)
         class(tree), intent(in) :: this
         isEmpty = .not. allocated(this%clust)

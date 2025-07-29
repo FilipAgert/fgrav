@@ -7,19 +7,8 @@ program main
     integer, parameter ::numparticles =50
     real(kind) :: cords(3,numparticles), weights(numparticles)
     type(tree), pointer :: root
-    allocate(root)
     call rand(cords)
-    root%bounds(:,1) = 0
-    root%bounds(:,2) = 1
-    root%width = 1
-    allocate(root%clust)
-    allocate(root%clust%pos(3,numparticles))
-    allocate(root%clust%weights(numparticles))
-    root%clust%pos = 0.5
-    root%clust%pos = cords
-    root%clust%weights = 1
-    root%clust%startidx = 1
-    root%clust%stopidx = numparticles+1
+    call root_constructor(root, cords, weights)
     call root%split()
     write(*,*)"number of children:", root%numChild
     call print(root, 0) 
