@@ -4,7 +4,7 @@ program main
     use tree_module
 
     implicit none
-    integer, parameter ::numparticles =4000
+    integer, parameter ::numparticles =50
     real(kind) :: cords(3,numparticles), weights(numparticles)
     type(tree), pointer :: root
     allocate(root)
@@ -18,9 +18,11 @@ program main
     root%clust%pos = 0.5
     root%clust%pos = cords
     root%clust%weights = 1
+    root%clust%startidx = 1
+    root%clust%stopidx = numparticles+1
     call root%split()
     write(*,*)"number of children:", root%numChild
-    !call print(root, 0) 
+    call print(root, 0) 
 
 
     contains

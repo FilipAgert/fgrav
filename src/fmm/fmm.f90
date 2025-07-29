@@ -25,9 +25,10 @@ module fmm
     end type
 
     type cluster
-        real(kind), allocatable :: pos(:,:) ! x, y, z global coordinates.
+        real(kind), pointer :: pos(:,:) ! x, y, z global coordinates.
         real(kind) :: cluster_pos(3) ! cluster center
-        real(kind), allocatable :: weights(:)
+        real(kind), pointer :: weights(:)
+        integer :: startidx = 0, stopidx=0 !!start(inclusive) and stop(exclusive) index of cluster's own values in the pos and weights arrays
         type(sph_harm_coeff_c) :: mp_exp!!multipole expansion coefficients
         type(sph_harm_coeff_c) :: mp_gl_exp !!Global coordinate system multipole expansion coefficient
     end type
@@ -102,8 +103,8 @@ module fmm
         complex(ckind) :: z
         type(sph_harm_coeff_c) :: Y
         clust%mp_exp%data=0
-
-        do i = 1, size(clust%weights,1)
+        write(*,*) clust%startidx, clust%stopidx
+        do i = clust%startidx, clust%stopidx - 1
             sph = toSpherical(clust%pos(:,i)-clust%cluster_pos)!psherical coordinates wrp center of cluster
             w = clust%weights(i)
             call Ynm(Y, sph(2), sph(3))

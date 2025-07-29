@@ -38,7 +38,7 @@ module tree_module
         class(tree), intent(in) :: this
         isEmpty = .not. allocated(this%clust)
         if(.not. isEmpty) then
-            isEmpty = size(this%clust%weights,1) == 0
+            isEmpty = this%clust%startidx == this%clust%stopidx
         endif
     end function
 
@@ -55,21 +55,25 @@ module tree_module
 
     recursive subroutine split(this)!!
         class(tree), intent(inout), target :: this
-        integer :: ii
+        integer :: ii, index
         real(kind) :: subs(3,2,8)
-        if(size(this%clust%weights,1) > clust_ceil ) then
+        real(kind) :: mids(3)
+        if(this%clust%stopidx-this%clust%startidx > clust_ceil ) then
             subs = subdivide(this%bounds)
             this%numChild = 8
             if(.not. this%isRoot()) this%parent%numChild = this%parent%numChild + 8
             allocate(this%child_arr(8))
+            mids = (this%bounds(:,2) + this%bounds(:,1))/2.0_kind
+            call quicksort_octant(this%clust%pos, this%clust%weights, mids, this%clust%startidx,this%clust%stopidx-1)
+            index = this%clust%startidx
             do ii = 1,8
                 allocate(tree :: this%child_arr(ii)%child)
                 this%child_arr(ii)%child%parent => this
                 this%child_arr(ii)%child%bounds = subs(:,:,ii)
                 this%child_arr(ii)%child%width = this%width*0.5_kind
-                call assign_clust(this%child_arr(ii)%child, this%clust)
+                call assign_clust(this%child_arr(ii)%child, this%clust, index)
                 if(this%child_arr(ii)%child%isEmpty()) cycle !If child has no points, dont compute anything.
-                call calc_clust(this%child_arr(ii)%child)!!Precompute the multipole expansion for this cluster.
+                !call calc_clust(this%child_arr(ii)%child)!!Precompute the multipole expansion for this cluster.
                 call split(this%child_arr(ii)%child)
             end do
         else
@@ -78,6 +82,65 @@ module tree_module
         !else, do nothing as this node only has a few particles inside. Dont need to subdivide further.
     end subroutine
 
+    recursive subroutine quicksort_octant(pos, weights, mids, idxstart, idxstop)
+        real(kind), pointer :: pos(:,:)   ! shape (3, N)
+        real(kind), pointer :: weights(:) ! length N
+        real(kind), intent(in) :: mids(3) ! midpoints for octant calc
+        integer, intent(in) :: idxstart, idxstop
+        integer :: i, j, pivot, tmpOct
+        real(kind) :: tmpW
+        real(kind) :: tmpPos(3)
+
+        if (idxstart >= idxstop) return
+
+        ! Choose pivot = octant of middle element
+        pivot = octant(pos, (idxstart + idxstop) / 2, mids)
+
+        i = idxstart
+        j = idxstop
+
+        do
+            do while (octant(pos, i, mids) < pivot)
+                i = i + 1
+            end do
+            do while (octant(pos, j, mids) > pivot)
+                j = j - 1
+            end do
+
+            if (i <= j) then
+                ! Swap positions
+                tmpPos = pos(:, i)
+                pos(:, i) = pos(:, j)
+                pos(:, j) = tmpPos
+
+                ! Swap weights
+                tmpW = weights(i)
+                weights(i) = weights(j)
+                weights(j) = tmpW
+
+                i = i + 1
+                j = j - 1
+            end if
+
+            if (i > j) exit
+        end do
+
+        if (idxstart < j) call quicksort_octant(pos, weights, mids, idxstart, j)
+        if (i < idxstop)  call quicksort_octant(pos, weights, mids, i, idxstop)
+
+    end subroutine
+
+    !!gets which octant coordinate is in based on midpoints of bounds
+    integer function octant(pos, idx, mids)
+        real(kind), pointer :: pos(:,:)
+        integer, intent(in) :: idx
+        real(kind), intent(in) ::mids(3)
+        integer :: bits(3)
+        bits = merge(1,0,pos(:,idx) >= mids)
+        octant = 1 + bits(1) + 2*bits(2) + 4*bits(3)
+        !
+
+    end function
     recursive function getRoot(this) result(root)
         type(tree), intent(in), pointer :: this
         type(tree), pointer :: root
@@ -140,29 +203,38 @@ module tree_module
     end function
 
     !!From a parents cluster, take relevant points into this cluster's 
-    subroutine assign_clust(this, parent_clust)
+    subroutine assign_clust(this, parent_clust, idx)
         type(tree), intent(inout) :: this
         type(cluster), intent(in) ::parent_clust
+        integer, intent(inout) :: idx !on input: index pointing to first place in positions array. on output:
+        !where next child needs to start searching
         integer :: ctr, ii
         real(kind) :: shift(3)
-        ctr = 0
-        do ii = 1, size(parent_clust%weights,1)
-            if (contains_point(this%bounds, parent_clust%pos(:,ii))) ctr = ctr + 1
+        logical :: allocated
+        do
+            if(contains_point(this%bounds, parent_clust%pos(:,idx))) then
+                allocate(this%clust)
+                this%clust%startidx = idx
+                this%clust%pos => parent_clust%pos
+                this%clust%weights => parent_clust%weights
+                this%clust%cluster_pos = (this%bounds(:,2) + this%bounds(:,1) )/2.0_kind
+                idx = idx + 1
+                exit
+            else
+                return
+            endif
         end do
-        if(ctr > 0) then
-            allocate(this%clust)
-            allocate(this%clust%pos(3,ctr), this%clust%weights(ctr))
-            ctr = 0
-            this%clust%cluster_pos = (this%bounds(:,2) + this%bounds(:,1) )/2.0_kind
-            do ii = 1, size(parent_clust%weights,1)
-                if (contains_point(this%bounds, parent_clust%pos(:,ii)))then
-                    ctr = ctr + 1
-                    this%clust%pos(:,ctr) = parent_clust%pos(:,ii)
-                    this%clust%weights(ctr) = parent_clust%weights(ii)
-                endif
-            end do
 
-        endif
+        do
+            if(contains_point(this%bounds, parent_clust%pos(:,idx))) then
+                idx = idx + 1
+            else
+                exit
+            endif
+        end do
+        idx = idx !exclusive
+        this%clust%stopidx = idx
+        
     end subroutine
 
     subroutine calc_clust(this)
@@ -221,8 +293,6 @@ module tree_module
     recursive subroutine dealloc(this)
         type(tree), intent(inout), pointer :: this
         integer :: ii
-        if(allocated(this%clust%pos)) deallocate(this%clust%pos)
-        if(allocated(this%clust%weights)) deallocate(this%clust%weights)
         if(allocated(this%clust)) deallocate(this%clust)
         if(isLeaf(this)) then
 
@@ -239,9 +309,9 @@ module tree_module
         integer :: ii
         write(*,*) 
         write(*,'(a,i3)') "Level:", level
-        write(*,'(a,i4)') "number of nodes: ", size(this%clust%weights,1)
+        write(*,'(a,i4)') "number of particles: ", this%clust%stopidx-this%clust%startidx
         write(*,'(a,f5.3,1x,f5.3,a,f5.3,1x,f5.3,a,f5.3,1x,f5.3)') "x:", this%bounds(1,:), ", y:", this%bounds(2,:), ", z:", this%bounds(3,:)
-        do ii = 1, size(this%clust%weights,1)
+        do ii = this%clust%startidx, this%clust%stopidx-1
             write(*,'(a,f5.3,1x,f5.3,1x,f5.3,a)') "[",this%clust%pos(:,ii),"]"
         end do
 
