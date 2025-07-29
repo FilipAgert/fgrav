@@ -2,7 +2,7 @@ module fmm
     use constants, only: kind, ckind
     implicit none
     private
-    public :: cluster, calc_mulp_exp, eval_mulp_exp_c, Ynm, sph_harm_coeff_d, sph_harm_coeff_c, eval_grad_mulpexp
+    public :: cluster, calc_mulp_exp, eval_mulp_exp_c, Ynm, sph_harm_coeff_d, sph_harm_coeff_c, eval_grad_mulpexp, calc_mulp_gl_exp
     integer, parameter :: p = 16 !!order of interpolation
     type sph_harm_coeff_d !!Data structure for storing spherical harmonic coefficients c_n^m
     !since each n stores (2n+1) coefficients, a 2d array is inefficient. 1d array is better.
@@ -119,7 +119,7 @@ module fmm
         real(kind) :: rho, alpha, beta, rhoraised, w, rhopow
         complex(ckind) :: z, zm
         type(sph_harm_coeff_c) :: Y
-        clust%mp_exp%data=0
+        clust%mp_gl_exp%data=0
 
         rho = clust%cluster_pos(1)
         alpha=clust%cluster_pos(2)
