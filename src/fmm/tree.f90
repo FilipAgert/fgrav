@@ -6,13 +6,51 @@ module tree_module
     integer, parameter :: clust_ceil = 10 !! 10 particles per cluster
     public world_to_tree, subdivide
 
-    type tree
+    !When we create a subcube => the subcubes must recursively walk the tree
+    !and get pointers to all nodes in the tree with near field
+    !and all nodes with far fields
+    type :: tree
         real(kind) :: bounds(3,2)!!xyz minmax values
+        real(kind) :: width !!Length of box sides.
+        type(treeptr), allocatable :: child_arr(:)
+        type(tree), pointer :: parent => null()
         contains
 
-
+        procedure, pass(this) :: isRoot
+        procedure, pass(this) :: isLeaf
     end type
+
+    type :: treeptr
+        type(tree), pointer :: child
+    end type
+
+
+
     contains
+
+    logical function isRoot(this)
+        class(tree), intent(in) ::this
+        isRoot = .not. associated(this%parent)
+    end function
+
+    logical function isLeaf(this)
+        class(tree), intent(in) ::this
+        isLeaf = .not. allocated(this%child_arr)
+    end function
+
+    subroutine split(this)
+        type(tree), intent(inout), target :: this
+        integer :: ii
+        real(kind) :: subs(3,2,8)
+        subs = subdivide(this%bounds)
+        allocate(this%child_arr(8))
+        do ii = 1,8
+            allocate(tree :: this%child_arr(ii)%child)
+            this%child_arr(ii)%child%parent => this
+            this%child_arr(ii)%child%bounds = subs(:,:,ii)
+            this%child_arr(ii)%child%width = this%width*0.5_kind
+        end do
+    end subroutine
 
     subroutine world_to_tree(translation, scaling, coords) !Convert world coordinates to [0,1]^3
         real(kind), intent(in) ::coords(:,:)
@@ -40,7 +78,7 @@ module tree_module
 
         do i =1,8
             !The ISHFTS and IAND are truth tables for 3 variables. x rightmost, y, then z
-            !   0 0 0
+            !   0 0 0-ä
             !   0 0 1
             !   0 1 0
             !   0 1 1 etc
