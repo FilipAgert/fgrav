@@ -10,12 +10,12 @@ all: $(DEXE)/$(EXEN)
 VPATH = $(DSRC):$(DTEST):$(DSRC)/fmm
 # Flags
 LIBS = 
-FLAGS = -O3 -I$(DOBJ) -I$(DMOD) -fcheck=all -fbacktrace -g -ffree-line-length-none -fimplicit-none
+FLAGS = -O1 -I$(DOBJ) -I$(DMOD) -fbacktrace -g -ffree-line-length-none -fimplicit-none
 CC = gfortran $(FLAGS) -J$(DMOD) $(LIBS) -c
 CCL = gfortran -o
 
 # Objects
-OBJECTS = $(DOBJ)/constants.o $(DOBJ)/body_module.o $(DOBJ)/sim.o $(DOBJ)/out.o $(DOBJ)/fmm.o $(DOBJ)/fmm_math.o $(DOBJ)/tree.o
+OBJECTS = $(DOBJ)/constants.o $(DOBJ)/body_module.o $(DOBJ)/sim.o $(DOBJ)/out.o $(DOBJ)/mulpol.o $(DOBJ)/mulpol_math.o $(DOBJ)/tree.o $(DOBJ)/fmm.o
 
 MAIN_OBJ = $(DOBJ)/main.o
 
@@ -28,9 +28,10 @@ $(DOBJ)/constants.o: $(DSRC)/constants.f90
 $(DOBJ)/out.o: $(DSRC)/out.f90 $(DOBJ)/constants.o $(DOBJ)/body_module.o
 
 $(DOBJ)/main_fmm.o: $(DSRC)/fmm/main_fmm.f90 $(DOBJ)/constants.o $(DOBJ)/fmm.o $(DOBJ)/tree.o
-$(DOBJ)/fmm.o: $(DSRC)/fmm/fmm.f90 $(DOBJ)/constants.o
-$(DOBJ)/fmm_math.o: $(DSRC)/fmm/fmm_math.f90 $(DOBJ)/constants.o $(DOBJ)/fmm.o
-$(DOBJ)/tree.o: $(DSRC)/fmm/tree.f90 $(DOBJ)/constants.o
+$(DOBJ)/mulpol.o: $(DSRC)/fmm/mulpol.f90 $(DOBJ)/constants.o
+$(DOBJ)/mulpol_math.o: $(DSRC)/fmm/mulpol_math.f90 $(DOBJ)/constants.o $(DOBJ)/mulpol.o
+$(DOBJ)/tree.o: $(DSRC)/fmm/tree.f90 $(DOBJ)/constants.o $(DOBJ)/mulpol.o
+$(DOBJ)/fmm.o: $(DSRC)/fmm/fmm.f90 $(DOBJ)/constants.o $(DOBJ)/mulpol.o $(DOBJ)/tree.o
 # Default target
 
 

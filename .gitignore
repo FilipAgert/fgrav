@@ -44,3 +44,6 @@
 .vscode
 out/*
 app/*
+
+perf*
+scaling*.txt
