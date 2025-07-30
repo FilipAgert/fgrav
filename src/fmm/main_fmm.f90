@@ -1,18 +1,23 @@
 program main
     use constants
-    use fmm
+    use mulpol
     use tree_module
+    use fmm
 
     implicit none
-    integer, parameter ::numparticles =2000
-    real(kind) :: cords(3,numparticles), weights(numparticles)
-    type(tree), pointer :: root
+    integer ::numparticles =1000
+    real(kind),allocatable :: cords(:,:), weights(:), acc(:,:)
+    integer :: ii, status
+    character(len=100) :: str
+    call get_command_argument(1, str,status=status)
+    if (status .eq. 0) read(str,'(i100)') numparticles
+    allocate(cords(3,numparticles), weights(numparticles), acc(3,numparticles))
     call rand(cords)
-    call root_constructor(root, cords, weights)
-    call root%split()
-    write(*,*)"number of children:", root%numChild
-    call print(root, 0) 
-
+    weights = 1
+    acc = eval_acc(cords, weights, G_Au)
+    ! do ii = 1, numparticles
+    !     write(*,'(a,3(f6.3,1x),a,3(f6.3,1x),a)') 'x: [', cords(:,ii),'], a=[',acc(:,ii),']'
+    ! end do
 
     contains
 

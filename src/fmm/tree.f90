@@ -1,11 +1,12 @@
 module tree_module
     use constants, only: kind
-    use fmm, only:cluster, calc_mulp_exp, calc_mulp_gl_exp
+    use mulpol, only:cluster, calc_mulp_exp, calc_mulp_gl_exp, eval_grad_mulpexp, Gmulpol
     implicit none
     private
     integer, parameter :: clust_ceil = 20 !! particles per cluster
+    integer, parameter :: maxnumfar = 200, maxnumclose = 27
     
-    public world_to_tree, subdivide, tree, print, root_constructor
+    public world_to_tree, subdivide, tree, print, root_constructor, eval_tree_acc
 
     !When we create a subcube => the subcubes must recursively walk the tree
     !and get pointers to all nodes in the tree with near field
@@ -52,6 +53,7 @@ module tree_module
     end subroutine
 
     logical function isEmpty(this)
+    !!Checks if node has particles
         class(tree), intent(in) :: this
         isEmpty = .not. allocated(this%clust)
         if(.not. isEmpty) then
@@ -90,6 +92,7 @@ module tree_module
                 this%child_arr(ii)%child%width = this%width*0.5_kind
                 call assign_clust(this%child_arr(ii)%child, this%clust, index)
                 if(this%child_arr(ii)%child%isEmpty()) cycle !If child has no points, dont compute anything.
+                !call shrinkwrap(this%child_arr(ii)%child) !!Reduce bounds of child to smallest possible
                 call calc_clust(this%child_arr(ii)%child)!!Precompute the multipole expansion for this cluster.
                 call split(this%child_arr(ii)%child)
             end do
@@ -173,13 +176,11 @@ module tree_module
     !!Excludes self in both of these since we dont want selfinteraction for a particle.
     subroutine startDescentNearFar(origin, nears, nearIdx, fars, farsIdx)
         type(tree), intent(in), pointer :: origin
-        type(treeptr), intent(out), allocatable :: nears(:), fars(:)
+        type(treeptr), intent(out) :: nears(maxnumclose), fars(maxnumfar)
         integer, intent(out) :: nearIdx, farsIdx
         integer :: numnodes
         type(tree), pointer :: root
         root => getRoot(origin)
-        numnodes = root%numChild
-        allocate(nears(numNodes), fars(numnodes)) !worst case array size is ALL nodes in one of the arrays.
         nearIdx = 0
         farsIdx = 0
         call descentAddNearFar(origin, root, nears, nearIdx, fars, farsIdx)
@@ -195,11 +196,13 @@ module tree_module
         if(associated(origin, node)) return!origin == node. skip.
         if(.not. isNearField(origin, node)) then!far field
             farsIdx = farsIdx + 1
+            !if(farsIdx > maxnumfar) error stop "too many fars"
             fars(farsIdx)%child => node
             !Stop descending if farfield as all children will be farfield
         else!near field
             if(node%isLeaf()) then !if its a leaf, add as near field
                 nearIdx = nearIdx + 1
+                !if(nearIdx > maxnumclose) error stop "too many close"
                 nears(nearIdx)%child => node
             else!if not a leaf, one of the children might be far field, so recursively call this function.
                 do ii = 1,8
@@ -207,6 +210,92 @@ module tree_module
                 end do
             endif
         endif
+
+    end subroutine
+
+    recursive subroutine eval_tree_acc(node, acc)
+    !!evaluates acceleration for all subnodes of input node.
+        type(tree), pointer :: node !!in: root of tree. 
+        real(kind), dimension(:,:), intent(inout) :: acc
+        integer :: ii
+        if(node%isLeaf()) then
+            if(node%isEmpty()) return
+            !write(*,*) "Not empty leaf."
+            call eval_node_acc(node, acc)
+        else
+            if(node%isEmpty()) then
+                !write(*,*) "Empty node."
+                return
+            else !has children
+                !write(*,*) "do for children."
+                do ii = 1,8
+                    call eval_tree_acc(node%child_arr(ii)%child,acc)
+                end do
+            endif
+        endif
+    end subroutine
+
+    subroutine eval_node_acc(node, acc)
+        type(tree), pointer :: node
+        real(kind), dimension(:,:), intent(inout) :: acc
+        type(treeptr) :: nears(maxnumclose), fars(maxnumfar)
+        integer :: nearIdx, farIdx, ii
+        call startDescentNearFar(node, nears, nearIdx, fars, farIdx) !!gets interaction list for node.
+        do ii = 1, nearIdx
+            call near_interaction(node, nears(ii)%child,acc)
+        end do
+        do ii = 1, farIdx
+            call far_interaction(node, fars(ii)%child, acc)
+        end do  
+        call self_interaction(node, acc)
+
+    end subroutine
+
+    subroutine near_interaction(node1, node2, acc)
+        type(tree), pointer:: node1, node2
+        real(kind), dimension(:,:), intent(inout) :: acc
+        real(kind), dimension(3) :: locAcc
+        real(kind) :: r(3)
+        integer :: ii,jj
+        locAcc = 0
+        do ii = node1%clust%startidx, node1%clust%stopidx -1!iterate over all particles in node1
+            do jj = node2%clust%startidx, node2%clust%stopidx - 1
+                r = node2%clust%pos(:,jj) - node1%clust%pos(:,ii) !vector from node1 to node2. Acceleration on node1 particle.
+                locAcc = r*Gmulpol/(sum(r*r,1)**(3.0/2.0)) 
+                acc(:,ii) = acc(:,ii) + locAcc*node2%clust%weights(jj)!!acceleration on node1 particle.
+                acc(:,jj) = acc(:,jj) - locAcc*node1%clust%weights(ii)!!acceleration on node2 particle.
+            end do
+        end do
+    end subroutine
+
+    subroutine self_interaction(node, acc)
+        type(tree), pointer:: node
+        real(kind), dimension(:,:), intent(inout) :: acc
+        real(kind), dimension(3) :: locAcc
+        real(kind) :: r(3)
+        integer :: ii,jj
+        locAcc = 0
+        do ii = node%clust%startidx, node%clust%stopidx -1!iterate over all particles in node1
+            do jj = ii + 1, node%clust%stopidx -1
+                r = node%clust%pos(:,jj) - node%clust%pos(:,ii) !vector from p1 to p2. Acceleration on p1 particle.
+                locAcc = r*Gmulpol/(sum(r*r,1)**(3.0/2.0)) 
+                acc(:,ii) = acc(:,ii) + locAcc*node%clust%weights(jj)!!acceleration on p1 particle.
+                acc(:,jj) = acc(:,jj) - locAcc*node%clust%weights(ii)!!acceleration on p2 particle.
+            end do
+        end do
+    end subroutine
+
+    subroutine far_interaction(node1, node2, acc) 
+        !!acceleration to particles in node1 from node2
+        type(tree), pointer ::node1, node2
+        real(kind), dimension(:,:), intent(inout) :: acc
+        real(kind) :: g(3)
+        integer :: ii
+        do ii = node1%clust%startidx, node1%clust%stopidx -1!iterate over all particles in node1
+            g = eval_grad_mulpexp(node2%clust%mp_gl_exp, node1%clust%pos(:,ii))
+            acc(:,ii) = acc(:,ii) + g/node1%clust%weights(ii)
+        end do
+
 
     end subroutine
 
@@ -251,7 +340,23 @@ module tree_module
         end do
         idx = idx !exclusive
         this%clust%stopidx = idx
-        
+    end subroutine
+
+    !!Adjust bounds of node to smallest possible
+    subroutine shrinkwrap(this)
+        type(tree), intent(inout) ::this
+        real(kind) :: width, bounds(3,2), slide(3,2), llup, uld
+        integer :: a,b
+        a = this%clust%startidx
+        b = this%clust%stopidx
+        this%bounds(:,1) = minval(this%clust%pos(:,a:b-1),2) !minvals for x,y,z
+        this%bounds(:,2) = maxval(this%clust%pos(:,a:b-1),2) !maxvals for x,y,z
+        slide(:,1) = bounds(:,1)-this%bounds(:,1)
+        slide(:,2) = this%bounds(:,2)-bounds(:,2)
+        llup = minval(slide(:,1),1)
+        uld = minval(slide(:,2),1)
+        this%bounds(:,1) = this%bounds(:,1) + llup
+        this%bounds(:,2) = this%bounds(:,2) - uld
     end subroutine
 
     subroutine calc_clust(this)
@@ -269,10 +374,13 @@ module tree_module
         contains_point = ALL(inside,1)
     end function
 
-    subroutine world_to_tree(translation, scaling, coords) !Convert world coordinates to [0,1]^3
+    subroutine world_to_tree(translation, scaling, coords) 
+        !!Convert world coordinates to [0,1]^3
+        !!To use: converted coordinates are cords*scaling + translation
         real(kind), intent(in) ::coords(:,:)
         real(kind) :: bounds(3,2)
-        real(kind),intent(out) :: translation(3), scaling !!translation and scaling to put coordinates from world to [0,1]
+        real(kind),intent(out) :: translation(3)!!translation to shift scaled coordinates to [0,1]
+        real(kind), intent(out) :: scaling !!scaling to scale coordinates to [a,b] where b-a = 1
         bounds(:,1) = minval(coords,2) !minvals for x,y,z
         bounds(:,2) = maxval(coords,2) !maxvals for x,y,z
         scaling = 1.0_kind/maxval(bounds(:,2)-bounds(:,1),1)![bounds(3,2)-bounds(3,1), bounds(2,2)-bounds(2,1), bounds(1,2)-bounds(1,1)])
