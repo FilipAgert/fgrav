@@ -12,16 +12,17 @@ with open(file='scaling_results_parallel.txt',mode="r") as file:
 N = np.array(N)
 T = np.array(T)
 
-model = lambda n, a, c,d: a * n * np.log(n) + c + d*n*n
+model = lambda n, a: a * n * np.log(n)
 
 # Fit the model
 params, _ = curve_fit(model, N, T)
-a,c,d = params
-print(f"Fitted model: T(N) ≈ {a:.3e} * N log N  + {c:.3f} + N^2 * {d:.3e}")
+a = params[0]
+
+print(f"Fitted model: T(N) ≈ {a:.3e} * N log N ")
 
 # Predict and plot
 N_fit = np.linspace(min(N), max(N), 200)
-T_fit = model(N_fit, a,c,d)
+T_fit = model(N_fit, a)
 fig, ax = plt.subplots(1,1)
 ax.scatter(N, T, label="Measured", color="blue")
 ax.plot(N_fit, T_fit, label=f"Fit", color="red")
@@ -31,7 +32,7 @@ ax.set_xscale("log")
 ax.set_yscale("log")
 
 ax.plot(N_fit, a*N_fit*np.log(N_fit), label='NLogN')
-ax.plot(N_fit, c*np.ones(len(N_fit)), label='Constant overhead')
-ax.plot(N_fit, d*N_fit*N_fit, label='N^2')
+#ax.plot(N_fit, c*np.ones(len(N_fit)), label='Constant overhead')
+#ax.plot(N_fit, d*N_fit*N_fit, label='N^2')
 ax.legend()
 plt.show()

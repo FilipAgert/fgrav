@@ -4,7 +4,7 @@ module tree_module
     implicit none
     private
     integer, parameter :: clust_ceil = 20 !! particles per cluster
-    integer, parameter :: maxnumfar = 200, maxnumclose = 27
+    integer, parameter :: maxnumfar = 200, maxnumclose = 100
     
     public world_to_tree, subdivide, tree, print, root_constructor, eval_tree_acc
 
@@ -218,6 +218,9 @@ module tree_module
         type(tree), pointer :: node !!in: root of tree. 
         real(kind), dimension(:,:), intent(inout) :: acc
         integer :: ii
+        if (.not. associated(node)) then
+            error stop "Error: node pointer is null or invalid"
+        endif
         if(node%isLeaf()) then
             if(node%isEmpty()) return
             !write(*,*) "Not empty leaf."

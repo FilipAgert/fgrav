@@ -3,12 +3,13 @@ submodule(mulpol) math
     integer, parameter :: m_ptr(0:p) = [(i*i+1,i=0,p)]
     contains
 
-    real(kind) module function  get_sph_coeff(this, n, m) result(val)
+    real(kind) pure module function  get_sph_coeff(this, n, m) result(val)
         class(sph_harm_coeff_d), intent(in) :: this
         integer, intent(in) :: n, m
         integer :: start, shift
         if(abs(m) > n) then
             val = 0
+            return
         else
             start = m_ptr(n)
             !order -m, -(m-1), ... m-1, ms
@@ -16,18 +17,19 @@ submodule(mulpol) math
             val = this%data(shift+start)
         endif
     end function
-    complex(ckind) module function  get_sph_coeff_c(this, n, m) result(val)
+    complex(ckind) pure module function  get_sph_coeff_c(this, n, m) result(val)
         class(sph_harm_coeff_c), intent(in) :: this
         integer, intent(in) :: n, m
         integer :: start, shift
         if(abs(m) > n) then
-            val = complex(0,0)
-        else
-            start = m_ptr(n)
-            !order -m, -(m-1), ... m-1, ms
-            shift = n + m !!= 0 if n = -m, 
-            val = this%data(shift+start)
+            val = 0
+            return
         endif
+        start = m_ptr(n)
+        !order -m, -(m-1), ... m-1, ms
+        shift = n + m !!= 0 if n = -m, 
+        val = this%data(shift+start)
+    
     end function
     module subroutine set_sph_coeff(this, n, m, val)
         class(sph_harm_coeff_d), intent(inout) :: this

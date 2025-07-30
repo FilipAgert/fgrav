@@ -36,11 +36,11 @@ module mulpol
 
      
     interface
-        module real(kind) function get_sph_coeff(this, n, m)
+        module pure real(kind) function get_sph_coeff(this, n, m)
             class(sph_harm_coeff_d), intent(in) :: this
             integer, intent(in) :: n, m
         end function
-        module complex(ckind) function get_sph_coeff_c(this, n, m)
+        module pure complex(ckind) function get_sph_coeff_c(this, n, m)
             class(sph_harm_coeff_c), intent(in) :: this
             integer, intent(in) :: n, m
         end function
@@ -146,6 +146,7 @@ module mulpol
         real(kind) :: rho, alpha, beta, rhopow, sph(3)
         complex(ckind) :: z, zm
         type(sph_harm_coeff_c) :: Y
+        integer :: m_start,m_end, jnm
         clust%mp_gl_exp%data=0
         sph = cart2sph(clust%cluster_pos)
         rho = sph(1)
@@ -162,12 +163,24 @@ module mulpol
                         rhopow = rhopow * rho
                     endif
                     zm = 0
-                    do m = -n, n
-                        zm = zm + clust%mp_exp%get(j-n,k-m) * complex(0,1.0_kind)**(abs(k)-abs(m)-abs(k-m))*Anm(n,m)*Anm(j-n,k-m)*Y%get(n,-m)
+                    m_start = max(-n, k - (j - n))
+                    m_end   = min( n, k + (j - n))
+                    do m = m_start, m_end
+                        
+                        zm = zm +clust%mp_exp%get(j-n,k-m) * complex(0,1.0_kind)**(abs(k)-abs(m)-abs(k-m))*Anm(n,m)*Anm(j-n,k-m)*Y%get(n,-m)
+
+                        ! if(m < m_start) then
+                        !     write(*,'(a,i3,1x,i3)') "m<m_start: j-n, k-m", j-n, k-m
+                        !     write(*,'(a,i3,1x,i3)') "m_start,m_stop: j-n, k-m", m_start, m_end
+                        ! else if(m > m_end) then 
+                        !     write(*,'(a,i3,1x,i3)') "m>m_end: j-n, k-m", j-n, k-m
+                        ! endif
                     end do
                     z = z + zm*rhopow
+
                 end do
-                z = z/Anm(k,j)
+                z = z/Anm(j,k)
+                !write(*,*) j,k,z
                 call clust%mp_gl_exp%set(j,k,z)
             end do
         end do
@@ -218,13 +231,19 @@ module mulpol
             zt = 0
             zp = 0
 
-            do m = -n, n
+            do m = -n, n-1
                 zr = zr + cf%get(n,m)* Y%get(n,m)
                 zp = zp + cf%get(n,m)*complex(0.0_kind, 1.0_kind) * m * isint *  Y%get(n,m)
                 !zt = zt + cf%get(n,m)*dYdt%get(n,m)
                 ! dYnm/dtheta = n cotan(theta) Ynm - 1/(sin theta) * Y_(n-1)m * sqrt(n+|m|)*sqrt(n-|m|)
+
                 zt = zt + cf%get(n,m) * (n*cott * Y%get(n,m) - isint*Y%get(n-1,m)*sqrt(1.0_kind*(n*n-m*m)))
             end do
+            m = n
+            zr = zr + cf%get(n,m)* Y%get(n,m)
+            zp = zp + cf%get(n,m)*complex(0.0_kind, 1.0_kind) * m * isint *  Y%get(n,m)
+            zt = zt + cf%get(n,m) * (n*cott * Y%get(n,m))
+
             rpow = rpow*sph(1)!r^n+2
             gsph(1) = gsph(1)+ (-n-1)*real(zr,kind)/rpow
             gsph(2) = gsph(2)+ real(zt,kind)/rpow
@@ -243,11 +262,12 @@ module mulpol
         if(first_time) then
             do nn = 0,p
                 do mm = -nn,nn
-                    call A%set(nn,mm, (-1)**n *1.0_kind / sqrt(fac(n-m)*fac(n+m)))
+                    call A%set(nn,mm, ((-1)**nn) *1.0_kind / sqrt(fac(nn-mm)*fac(nn+mm)))
                 end do
             end do
             first_time = .false.
         endif
+        !error stop
         Anm = A%get(n,m)
     end function
 
