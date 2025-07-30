@@ -167,7 +167,7 @@ submodule(mulpol) math
         !https://en.wikipedia.org/wiki/Associated_Legendre_polynomials#Recurrence_formula 
         if(y==0.0_kind) then!! x is either -1 or +1
             do n = 0,p
-                do m = -n, n
+                do m = 0, n
                     if(m/=0) then
                         call Pnm%set(n,m,0.0_kind)
                     else
@@ -190,7 +190,7 @@ submodule(mulpol) math
    
             !write(*,'(2I3,2f10.3)')n,n, Pnm%get(n,n), x
             !write(*,'(2I3,2f10.3)')n,n-1,Pnm%get(n,n-1), x
-            do m = n-1, -(n-1), -1
+            do m = n-1, 0, -1
                 if(y/=0.0_kind) then
                     val = -(2.0_kind*m*x*Pnm%get(n,m)/y + Pnm%get(n,m+1))/((n+m)*(n-m+1.0_kind))
                 else
