@@ -10,9 +10,9 @@ all: $(DEXE)/$(EXEN)
 VPATH = $(DSRC):$(DTEST):$(DSRC)/fmm
 # Flags
 LIBS = 
-FLAGS = -O3 -I$(DOBJ) -I$(DMOD) -fcheck=all -fbacktrace -g -ffree-line-length-none -fimplicit-none
+FLAGSDEV = -O2 -I$(DOBJ) -I$(DMOD) -fcheck=all -fbacktrace -g -ffree-line-length-none -fimplicit-none
 FLAGREL = -O3 -I$(DOBJ) -I$(DMOD) -g -ffree-line-length-none -fimplicit-none
-FLAGS =$(FLAGREL)
+FLAGS =$(FLAGSDEV)
 CC = gfortran $(FLAGS) -J$(DMOD) $(LIBS) -c
 CCL = gfortran -o
 
