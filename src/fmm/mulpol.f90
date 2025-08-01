@@ -36,11 +36,11 @@ module mulpol
 
      
     interface
-        module pure real(kind) function get_sph_coeff(this, n, m)
+        module pure elemental real(kind) function get_sph_coeff(this, n, m)
             class(sph_harm_coeff_d), intent(in) :: this
             integer, intent(in) :: n, m
         end function
-        module pure complex(ckind) function get_sph_coeff_c(this, n, m)
+        module pure elemental complex(ckind) function get_sph_coeff_c(this, n, m)
             class(sph_harm_coeff_c), intent(in) :: this
             integer, intent(in) :: n, m
         end function
@@ -216,7 +216,8 @@ module mulpol
         real(kind) :: gsph(3) !!gradient in spherical coordinates
         real(kind), intent(in) :: r(3)!!point in cartesian coordinates
         real(kind) :: cott, isint, rpow
-        complex(ckind) :: zr, zt, zp, phase
+        complex(ckind) :: zr, zt, zp, phase, Ynm, cfnm
+        complex(ckind), parameter :: imag = complex(0.0_kind, 1.0_kind)
         integer :: m,n
         sph = cart2sph(r)
         call Ynm(Y, sph(2), sph(3))
@@ -232,17 +233,21 @@ module mulpol
             zp = 0
 
             do m = -n, n-1
-                zr = zr + cf%get(n,m)* Y%get(n,m)
-                zp = zp + cf%get(n,m)*complex(0.0_kind, 1.0_kind) * m * isint *  Y%get(n,m)
+                Ynm = Y%get(n,m)
+                cfnm = cf%get(n,m)
+                zr = zr + cfnm* Ynm
+                zp = zp + cfnm*imag * m * isint *  Ynm
                 !zt = zt + cf%get(n,m)*dYdt%get(n,m)
                 ! dYnm/dtheta = n cotan(theta) Ynm - 1/(sin theta) * Y_(n-1)m * sqrt(n+|m|)*sqrt(n-|m|)
 
-                zt = zt + cf%get(n,m) * (n*cott * Y%get(n,m) - isint*Y%get(n-1,m)*sqrt(1.0_kind*(n*n-m*m)))
+                zt = zt +cfnm * (n*cott * Ynm - isint*Y%get(n-1,m)*sqrt(1.0_kind*(n*n-m*m)))
             end do
             m = n
-            zr = zr + cf%get(n,m)* Y%get(n,m)
-            zp = zp + cf%get(n,m)*complex(0.0_kind, 1.0_kind) * m * isint *  Y%get(n,m)
-            zt = zt + cf%get(n,m) * (n*cott * Y%get(n,m))
+            Ynm = Y%get(n,m)
+            cfnm = cf%get(n,m)
+            zr = zr + cfnm* Ynm
+            zp = zp + cfnm*imag * m * isint * Ynm
+            zt = zt + cfnm* (n*cott * Ynm)
 
             rpow = rpow*sph(1)!r^n+2
             gsph(1) = gsph(1)+ (-n-1)*real(zr,kind)/rpow
