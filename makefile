@@ -59,6 +59,17 @@ run: $(DEXE)/$(EXEN)
 fmm: $(DEXE)/$(EXEFMM)
 	$(DEXE)/$(EXEFMM)
 
+runcallgrind:
+	@name="callgrind.out.$(EXEFMM)"; \
+	n=0; \
+	filename="$$name"; \
+	while [ -e "$$filename" ]; do \
+		n=$$((n+1)); \
+		filename="$$name\_$$n"; \
+	done; \
+	echo "Saving callgrind output to $$filename"; \
+	valgrind --tool=callgrind --callgrind-out-file=$$filename $(DEXE)/$(EXEFMM); \
+	kcachegrind $$filename
 
 clean:
 	rm -rf $(DOBJ)/*.o $(DEXE)/* $(DMOD)/*.mod *.dat 
